@@ -10,12 +10,43 @@ const api = axios.create({
     },
 });
 
+// Add request interceptor for debugging
+api.interceptors.request.use(
+    (config) => {
+        const authHeader = config.headers['Authorization'];
+        if (authHeader) {
+            console.log('✅ Request to:', config.url, 'with Authorization header');
+        } else {
+            console.warn('⚠️ Request to:', config.url, 'WITHOUT Authorization header');
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            console.error('🔒 401 Unauthorized:', error.response.data);
+            console.error('Request URL:', error.config.url);
+            console.error('Request headers:', error.config.headers);
+        }
+        return Promise.reject(error);
+    }
+);
+
 // Add auth token to requests
 export const setAuthToken = (token) => {
     if (token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔑 Auth token set, length:', token.length);
     } else {
         delete api.defaults.headers.common['Authorization'];
+        console.log('🔓 Auth token removed');
     }
 };
 

@@ -27,7 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function TasksPage() {
-    const { getIdToken } = useAuth();
+    const { getIdToken, user } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [filteredTasks, setFilteredTasks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -44,8 +44,10 @@ export default function TasksPage() {
     });
 
     useEffect(() => {
-        loadTasks();
-    }, []);
+        if (user) {
+            loadTasks();
+        }
+    }, [user]);
 
     useEffect(() => {
         applyFilters();
@@ -54,26 +56,39 @@ export default function TasksPage() {
     const loadTasks = async () => {
         try {
             setLoading(true);
+
+            // Get token with validation
             const token = await getIdToken();
             if (!token) {
-                throw new Error('No authentication token found');
+                console.error('❌ No authentication token - user might not be logged in');
+                alert('Please log in to view tasks');
+                setTasks([]);
+                return;
             }
+
+            console.log('🔑 Token obtained, length:', token.length);
             setAuthToken(token);
 
-            console.log('Fetching tasks...');
+            console.log('📡 Fetching tasks...');
             const response = await tasksAPI.getTasks();
-            console.log('Tasks response:', response);
-            
+            console.log('✅ Tasks response:', response);
+
             if (response && response.data) {
                 setTasks(Array.isArray(response.data) ? response.data : []);
             } else {
-                console.warn('Unexpected response format:', response);
+                console.warn('⚠️ Unexpected response format:', response);
                 setTasks([]);
             }
         } catch (error) {
-            console.error('Error loading tasks:', error);
-            // You might want to show this error to the user
-            alert(`Failed to load tasks: ${error.message}`);
+            console.error('❌ Error loading tasks:', error);
+            console.error('Error response:', error.response?.data);
+            console.error('Error status:', error.response?.status);
+
+            if (error.response?.status === 401) {
+                alert('Authentication failed. Please log out and log in again.');
+            } else {
+                alert(`Failed to load tasks: ${error.message}`);
+            }
             setTasks([]);
         } finally {
             setLoading(false);

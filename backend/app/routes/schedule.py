@@ -91,9 +91,9 @@ async def generate_weekly_schedule(
 ):
     """Generate a weekly schedule"""
     try:
-        # Get all tasks
-        tasks = firebase_service.get_user_tasks(current_user['id'])
-        print(f"\n[Weekly] ===== DEBUG =====\nTotal tasks: {len(tasks)}")
+        # Get only pending tasks (not completed)
+        tasks = firebase_service.get_user_tasks(current_user['id'], 'pending')
+        print(f"\n[Weekly] ===== DEBUG =====\nPending tasks: {len(tasks)}")
         for i, t in enumerate(tasks[:3]):
             print(f"Task {i+1}: {t.get('title')} | Deadline: {t.get('deadline')}")
         print(f"[Weekly] Generating schedule...")

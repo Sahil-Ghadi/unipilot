@@ -26,8 +26,10 @@ export default function DashboardPage() {
     });
 
     useEffect(() => {
-        loadTasks();
-    }, []);
+        if (user) {
+            loadTasks();
+        }
+    }, [user]);
 
     const loadTasks = async () => {
         try {
