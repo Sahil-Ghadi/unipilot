@@ -201,3 +201,182 @@ class FirebaseService:
             return decoded_token
         except Exception as e:
             raise ValueError(f"Invalid token: {str(e)}")
+    
+    # Message operations
+    def create_message(self, project_id: str, message_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new message in a project"""
+        message_data['created_at'] = datetime.utcnow()
+        
+        message_ref = self.db.collection('projects').document(project_id).collection('messages').document()
+        message_ref.set(message_data)
+        return {'id': message_ref.id, **message_data}
+    
+    def get_project_messages(self, project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get messages for a project"""
+        query = (
+            self.db.collection('projects')
+            .document(project_id)
+            .collection('messages')
+            .order_by('created_at', direction=firestore.Query.DESCENDING)
+            .limit(limit)
+        )
+        
+        docs = query.stream()
+        messages = [{'id': doc.id, **self._convert_timestamps(doc.to_dict())} for doc in docs]
+        
+        # Return in chronological order (oldest first)
+        return list(reversed(messages))
+    
+    # Notification operations
+    def create_notification(self, notification_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new notification"""
+        notification_data['created_at'] = datetime.utcnow()
+        notification_data['status'] = 'pending'
+        
+        notification_ref = self.db.collection('notifications').document()
+        notification_ref.set(notification_data)
+        return {'id': notification_ref.id, **notification_data}
+    
+    def get_user_notifications(self, user_email: str) -> List[Dict[str, Any]]:
+        """Get notifications for a user by email"""
+        try:
+            # Try with ordering (requires composite index)
+            query = (
+                self.db.collection('notifications')
+                .where('to_user_email', '==', user_email)
+                .order_by('created_at', direction=firestore.Query.DESCENDING)
+            )
+            
+            docs = query.stream()
+            notifications = [{'id': doc.id, **self._convert_timestamps(doc.to_dict())} for doc in docs]
+            return notifications
+        except Exception as e:
+            # Fallback: query without ordering if index doesn't exist
+            print(f"Warning: Could not query with ordering, using fallback: {str(e)}")
+            query = self.db.collection('notifications').where('to_user_email', '==', user_email)
+            docs = query.stream()
+            notifications = [{'id': doc.id, **self._convert_timestamps(doc.to_dict())} for doc in docs]
+            # Sort in Python instead
+            notifications.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            return notifications
+    
+    def get_notification(self, notification_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific notification"""
+        doc = self.db.collection('notifications').document(notification_id).get()
+        if doc.exists:
+            return {'id': doc.id, **self._convert_timestamps(doc.to_dict())}
+        return None
+    
+    def update_notification(self, notification_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a notification"""
+        notification_ref = self.db.collection('notifications').document(notification_id)
+        update_data['updated_at'] = datetime.utcnow()
+        notification_ref.update(update_data)
+        return self.get_notification(notification_id)
+    
+    def delete_notification(self, notification_id: str) -> bool:
+        """Delete a notification"""
+        self.db.collection('notifications').document(notification_id).delete()
+        return True
+    
+    # Project Task operations
+    def create_project_task(self, project_id: str, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new task in a project"""
+        task_data['created_at'] = datetime.utcnow()
+        task_data['status'] = 'pending'
+        
+        task_ref = self.db.collection('projects').document(project_id).collection('tasks').document()
+        task_ref.set(task_data)
+        return {'id': task_ref.id, **task_data}
+    
+    def get_project_tasks(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get all tasks for a project"""
+        tasks_ref = self.db.collection('projects').document(project_id).collection('tasks')
+        docs = tasks_ref.stream()
+        tasks = [{'id': doc.id, **self._convert_timestamps(doc.to_dict())} for doc in docs]
+        # Sort by created_at descending
+        tasks.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return tasks
+    
+    def get_project_task(self, project_id: str, task_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific task"""
+        doc = self.db.collection('projects').document(project_id).collection('tasks').document(task_id).get()
+        if doc.exists:
+            return {'id': doc.id, **self._convert_timestamps(doc.to_dict())}
+        return None
+    
+    def update_project_task(self, project_id: str, task_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a task"""
+        update_data['updated_at'] = datetime.utcnow()
+        task_ref = self.db.collection('projects').document(project_id).collection('tasks').document(task_id)
+        task_ref.update(update_data)
+        return self.get_project_task(project_id, task_id)
+    
+    def delete_project_task(self, project_id: str, task_id: str) -> bool:
+        """Delete a task"""
+        self.db.collection('projects').document(project_id).collection('tasks').document(task_id).delete()
+        return True
+    
+    def complete_project_task(self, project_id: str, task_id: str) -> Dict[str, Any]:
+        """Mark a task as completed"""
+        update_data = {
+            'status': 'completed',
+            'completed_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        task_ref = self.db.collection('projects').document(project_id).collection('tasks').document(task_id)
+        task_ref.update(update_data)
+        return self.get_project_task(project_id, task_id)
+    
+    # Google Calendar token operations
+    def store_google_calendar_tokens(self, user_id: str, tokens: Dict[str, Any]) -> bool:
+        """Store Google Calendar OAuth tokens for a user"""
+        try:
+            self.db.collection('users').document(user_id).set({
+                'google_calendar': {
+                    'access_token': tokens['access_token'],
+                    'refresh_token': tokens.get('refresh_token'),
+                    'token_expiry': tokens.get('token_expiry'),
+                    'connected_at': datetime.utcnow()
+                }
+            }, merge=True)
+            return True
+        except Exception as e:
+            print(f"Error storing tokens: {e}")
+            return False
+    
+    def get_google_calendar_tokens(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get Google Calendar OAuth tokens for a user"""
+        try:
+            doc = self.db.collection('users').document(user_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                return data.get('google_calendar')
+            return None
+        except Exception as e:
+            print(f"Error getting tokens: {e}")
+            return None
+    
+    def delete_google_calendar_tokens(self, user_id: str) -> bool:
+        """Delete Google Calendar OAuth tokens for a user"""
+        try:
+            self.db.collection('users').document(user_id).update({
+                'google_calendar': firestore.DELETE_FIELD
+            })
+            return True
+        except Exception as e:
+            print(f"Error deleting tokens: {e}")
+            return False
+    
+    def update_task_calendar_id(self, task_id: str, calendar_event_id: str) -> bool:
+        """Store Google Calendar event ID with task"""
+        try:
+            self.db.collection('tasks').document(task_id).update({
+                'calendar_event_id': calendar_event_id,
+                'synced_to_calendar': True,
+                'last_synced': datetime.utcnow()
+            })
+            return True
+        except Exception as e:
+            print(f"Error updating task calendar ID: {e}")
+            return False

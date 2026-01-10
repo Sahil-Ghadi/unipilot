@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Container, Typography, Paper, Box, Button } from '@mui/material';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Navbar from '@/components/Navbar';
+import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { syllabusAPI, setAuthToken } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -55,80 +55,81 @@ export default function UploadPage() {
 
     return (
         <ProtectedRoute>
-            <Navbar />
-            <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-                <Typography variant="h4" gutterBottom fontWeight={700}>
-                    Upload Syllabus
-                </Typography>
-                <Typography variant="body1" color="text.secondary" gutterBottom>
-                    Upload your course syllabus PDF and let AI extract all assignments and deadlines
-                </Typography>
+            <Layout>
+                <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+                    <Typography variant="h4" gutterBottom fontWeight={700}>
+                        Upload Syllabus
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" gutterBottom>
+                        Upload your course syllabus PDF and let AI extract all assignments and deadlines
+                    </Typography>
 
-                <Paper sx={{ p: 4, mt: 4, textAlign: 'center' }}>
-                    <Box
-                        sx={{
-                            border: '2px dashed',
-                            borderColor: 'primary.main',
-                            borderRadius: 2,
-                            p: 6,
-                            bgcolor: 'background.default',
-                        }}
-                    >
-                        <CloudUploadIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-                        <Typography variant="h6" gutterBottom>
-                            {uploading ? 'Uploading...' : 'Upload PDF Syllabus'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                            Drag and drop or click to select a PDF file
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            component="label"
-                            disabled={uploading}
+                    <Paper sx={{ p: 4, mt: 4, textAlign: 'center' }}>
+                        <Box
+                            sx={{
+                                border: '2px dashed',
+                                borderColor: 'primary.main',
+                                borderRadius: 2,
+                                p: 6,
+                                bgcolor: 'background.default',
+                            }}
                         >
-                            Select PDF
-                            <input
-                                type="file"
-                                hidden
-                                accept="application/pdf"
-                                onChange={handleFileUpload}
-                            />
-                        </Button>
-                    </Box>
-
-                    {selectedFile && !uploading && (
-                        <Box sx={{ mt: 4 }}>
-                            <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
+                            <CloudUploadIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
                             <Typography variant="h6" gutterBottom>
-                                {selectedFile.name}
+                                {uploading ? 'Uploading...' : 'Upload PDF Syllabus'}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Ready to extract tasks
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                Drag and drop or click to select a PDF file
                             </Typography>
                             <Button
                                 variant="contained"
-                                size="large"
-                                onClick={handleExtract}
+                                component="label"
                                 disabled={uploading}
                             >
-                                {uploading ? 'Extracting...' : 'Extract Tasks with AI'}
+                                Select PDF
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept="application/pdf"
+                                    onChange={handleFileUpload}
+                                />
                             </Button>
                         </Box>
-                    )}
-                </Paper>
 
-                <Paper sx={{ p: 3, mt: 4, bgcolor: 'info.light' }}>
-                    <Typography variant="h6" gutterBottom>
-                        💡 Tips for best results
-                    </Typography>
-                    <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
-                        <li>Ensure your PDF is text-based (not scanned images)</li>
-                        <li>The syllabus should clearly list assignments and deadlines</li>
-                        <li>Include course name and grading weights if available</li>
-                        <li>You can edit extracted tasks before saving</li>
-                    </Typography>
-                </Paper>
-            </Container>
+                        {selectedFile && !uploading && (
+                            <Box sx={{ mt: 4 }}>
+                                <CheckCircleIcon sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
+                                <Typography variant="h6" gutterBottom>
+                                    {selectedFile.name}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                    Ready to extract tasks
+                                </Typography>
+                                <Button
+                                    variant="contained"
+                                    size="large"
+                                    onClick={handleExtract}
+                                    disabled={uploading}
+                                >
+                                    {uploading ? 'Extracting...' : 'Extract Tasks with AI'}
+                                </Button>
+                            </Box>
+                        )}
+                    </Paper>
+
+                    <Paper sx={{ p: 3, mt: 4, bgcolor: 'info.light' }}>
+                        <Typography variant="h6" gutterBottom>
+                            💡 Tips for best results
+                        </Typography>
+                        <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
+                            <li>Ensure your PDF is text-based (not scanned images)</li>
+                            <li>The syllabus should clearly list assignments and deadlines</li>
+                            <li>Include course name and grading weights if available</li>
+                            <li>You can edit extracted tasks before saving</li>
+                        </Typography>
+                    </Paper>
+                </Container>
+            </Layout>
         </ProtectedRoute>
     );
 }

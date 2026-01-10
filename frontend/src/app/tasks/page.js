@@ -18,7 +18,7 @@ import {
     Chip,
 } from '@mui/material';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Navbar from '@/components/Navbar';
+import Layout from '@/components/Layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -189,121 +189,122 @@ export default function TasksPage() {
 
     return (
         <ProtectedRoute>
-            <Navbar />
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight={700}>
-                        My Tasks
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => handleOpenDialog()}
-                    >
-                        Add Task
-                    </Button>
-                </Box>
-
-                {/* Filters */}
-                <Box sx={{ mb: 3, display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <FilterListIcon color="action" />
-                    <Chip
-                        label="All"
-                        onClick={() => setFilterStatus('all')}
-                        color={filterStatus === 'all' ? 'primary' : 'default'}
-                    />
-                    <Chip
-                        label="Pending"
-                        onClick={() => setFilterStatus('pending')}
-                        color={filterStatus === 'pending' ? 'primary' : 'default'}
-                    />
-                    <Chip
-                        label="In Progress"
-                        onClick={() => setFilterStatus('in-progress')}
-                        color={filterStatus === 'in-progress' ? 'primary' : 'default'}
-                    />
-                    <Chip
-                        label="Completed"
-                        onClick={() => setFilterStatus('completed')}
-                        color={filterStatus === 'completed' ? 'primary' : 'default'}
-                    />
-                </Box>
-
-                {loading ? (
-                    <LoadingSpinner />
-                ) : filteredTasks.length === 0 ? (
-                    <Typography color="text.secondary" textAlign="center" sx={{ mt: 4 }}>
-                        No tasks found. Add your first task to get started!
-                    </Typography>
-                ) : (
-                    filteredTasks.map((task) => (
-                        <TaskCard
-                            key={task.id}
-                            task={task}
-                            onEdit={handleOpenDialog}
-                            onDelete={handleDelete}
-                            onComplete={handleComplete}
-                        />
-                    ))
-                )}
-
-                {/* Task Dialog */}
-                <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-                    <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
-                    <DialogContent>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                            <TextField
-                                label="Title"
-                                fullWidth
-                                value={formData.title}
-                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            />
-                            <TextField
-                                label="Description"
-                                fullWidth
-                                multiline
-                                rows={3}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            />
-                            <TextField
-                                label="Course"
-                                fullWidth
-                                value={formData.course}
-                                onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                            />
-                            <TextField
-                                label="Deadline"
-                                type="datetime-local"
-                                fullWidth
-                                value={formData.deadline}
-                                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                                InputLabelProps={{ shrink: true }}
-                            />
-                            <TextField
-                                label="Estimated Effort (hours)"
-                                type="number"
-                                fullWidth
-                                value={formData.estimated_effort}
-                                onChange={(e) => setFormData({ ...formData, estimated_effort: parseFloat(e.target.value) })}
-                            />
-                            <TextField
-                                label="Weight (% of grade)"
-                                type="number"
-                                fullWidth
-                                value={formData.weight}
-                                onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
-                            />
-                        </Box>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseDialog}>Cancel</Button>
-                        <Button onClick={handleSubmit} variant="contained">
-                            {editingTask ? 'Update' : 'Create'}
+            <Layout>
+                <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h4" fontWeight={700}>
+                            My Tasks
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenDialog()}
+                        >
+                            Add Task
                         </Button>
-                    </DialogActions>
-                </Dialog>
-            </Container>
+                    </Box>
+
+                    {/* Filters */}
+                    <Box sx={{ mb: 3, display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <FilterListIcon color="action" />
+                        <Chip
+                            label="All"
+                            onClick={() => setFilterStatus('all')}
+                            color={filterStatus === 'all' ? 'primary' : 'default'}
+                        />
+                        <Chip
+                            label="Pending"
+                            onClick={() => setFilterStatus('pending')}
+                            color={filterStatus === 'pending' ? 'primary' : 'default'}
+                        />
+                        <Chip
+                            label="In Progress"
+                            onClick={() => setFilterStatus('in-progress')}
+                            color={filterStatus === 'in-progress' ? 'primary' : 'default'}
+                        />
+                        <Chip
+                            label="Completed"
+                            onClick={() => setFilterStatus('completed')}
+                            color={filterStatus === 'completed' ? 'primary' : 'default'}
+                        />
+                    </Box>
+
+                    {loading ? (
+                        <LoadingSpinner />
+                    ) : filteredTasks.length === 0 ? (
+                        <Typography color="text.secondary" textAlign="center" sx={{ mt: 4 }}>
+                            No tasks found. Add your first task to get started!
+                        </Typography>
+                    ) : (
+                        filteredTasks.map((task) => (
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                onEdit={handleOpenDialog}
+                                onDelete={handleDelete}
+                                onComplete={handleComplete}
+                            />
+                        ))
+                    )}
+
+                    {/* Task Dialog */}
+                    <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+                        <DialogTitle>{editingTask ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+                        <DialogContent>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                                <TextField
+                                    label="Title"
+                                    fullWidth
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                />
+                                <TextField
+                                    label="Description"
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
+                                <TextField
+                                    label="Course"
+                                    fullWidth
+                                    value={formData.course}
+                                    onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                                />
+                                <TextField
+                                    label="Deadline"
+                                    type="datetime-local"
+                                    fullWidth
+                                    value={formData.deadline}
+                                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                                <TextField
+                                    label="Estimated Effort (hours)"
+                                    type="number"
+                                    fullWidth
+                                    value={formData.estimated_effort}
+                                    onChange={(e) => setFormData({ ...formData, estimated_effort: parseFloat(e.target.value) })}
+                                />
+                                <TextField
+                                    label="Weight (% of grade)"
+                                    type="number"
+                                    fullWidth
+                                    value={formData.weight}
+                                    onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) })}
+                                />
+                            </Box>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={handleCloseDialog}>Cancel</Button>
+                            <Button onClick={handleSubmit} variant="contained">
+                                {editingTask ? 'Update' : 'Create'}
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
+                </Container>
+            </Layout>
         </ProtectedRoute>
     );
 }

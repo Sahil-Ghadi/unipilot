@@ -21,8 +21,9 @@ import {
     Divider,
 } from '@mui/material';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Navbar from '@/components/Navbar';
+import Layout from '@/components/Layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { scheduleAPI, calendarAPI, setAuthToken } from '@/lib/api';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -57,6 +58,10 @@ export default function SchedulePage() {
         const loadSavedSchedules = async () => {
             try {
                 const token = await getIdToken();
+                if (!token) {
+                    console.log('Skipping schedule load - no token');
+                    return;
+                }
                 setAuthToken(token);
 
                 // Load today's daily schedule
@@ -216,26 +221,28 @@ export default function SchedulePage() {
     );
 
     const renderDailySchedule = () => (
-        <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box>
-                    <Typography variant="h5" fontWeight={700}>
-                        {format(new Date(), 'EEEE, MMMM d, yyyy')}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {workHoursStart}:00 AM - {workHoursEnd > 12 ? workHoursEnd - 12 : workHoursEnd}:00 {workHoursEnd >= 12 ? 'PM' : 'AM'}
-                        {studyTechnique !== 'none' && ` • ${studyTechnique === 'pomodoro' ? 'Pomodoro' : studyTechnique === 'timeblocking' ? 'Time Blocking' : '52-17 Method'}`}
-                    </Typography>
+        <Box sx={{ maxWidth: 'md', mx: 'auto' }}>
+            <Paper sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Box>
+                        <Typography variant="h5" fontWeight={700}>
+                            {format(new Date(), 'EEEE, MMMM d, yyyy')}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {workHoursStart}:00 AM - {workHoursEnd > 12 ? workHoursEnd - 12 : workHoursEnd}:00 {workHoursEnd >= 12 ? 'PM' : 'AM'}
+                            {studyTechnique !== 'none' && ` • ${studyTechnique === 'pomodoro' ? 'Pomodoro' : studyTechnique === 'timeblocking' ? 'Time Blocking' : '52-17 Method'}`}
+                        </Typography>
+                    </Box>
+                    <Chip
+                        label={`${schedule.blocks.length} blocks`}
+                        color="primary"
+                        variant="outlined"
+                    />
                 </Box>
-                <Chip
-                    label={`${schedule.blocks.length} blocks`}
-                    color="primary"
-                    variant="outlined"
-                />
-            </Box>
-            <Divider sx={{ mb: 3 }} />
-            {schedule.blocks.map((block, index) => renderTimeBlock(block, index))}
-        </Paper>
+                <Divider sx={{ mb: 3 }} />
+                {schedule.blocks.map((block, index) => renderTimeBlock(block, index))}
+            </Paper>
+        </Box>
     );
 
     const renderWeeklySchedule = () => (
@@ -243,7 +250,7 @@ export default function SchedulePage() {
             {Object.entries(weeklySchedule).map(([date, scheduleData]) => {
                 const blocks = scheduleData?.blocks || [];
                 return (
-                    <Grid item xs={12} md={6} lg={4} key={date}>
+                    <Grid item xs={12} md={6} lg={6} key={date}>
                         <Paper sx={{ p: 2, height: '100%' }}>
                             <Typography variant="h6" fontWeight={600} gutterBottom>
                                 {format(parseISO(date), 'EEEE')}
@@ -270,162 +277,170 @@ export default function SchedulePage() {
 
     return (
         <ProtectedRoute>
-            <Navbar />
-            <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight={700}>
-                        📅 My Schedule
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="outlined"
-                            startIcon={<SettingsIcon />}
-                            onClick={() => setSettingsOpen(true)}
-                        >
-                            Settings
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<CalendarMonthIcon />}
-                            onClick={handleGenerateSchedule}
-                            disabled={loading}
-                        >
-                            Generate {view === 'daily' ? 'Daily' : 'Weekly'} Schedule
-                        </Button>
-                        {(schedule || weeklySchedule) && (
+            <Layout>
+                <Box maxWidth="xl" sx={{ mx: 'auto' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h4" fontWeight={700}>
+                            📅 My Schedule
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
                             <Button
                                 variant="outlined"
-                                startIcon={<SyncIcon />}
-                                onClick={handleSyncToCalendar}
-                                disabled={syncing}
+                                startIcon={<SettingsIcon />}
+                                onClick={() => setSettingsOpen(true)}
                             >
-                                Sync to Calendar
+                                Settings
                             </Button>
-                        )}
-                    </Box>
-                </Box>
-
-                <Box sx={{ mb: 3 }}>
-                    <ToggleButtonGroup
-                        value={view}
-                        exclusive
-                        onChange={(e, newView) => {
-                            if (newView) {
-                                setView(newView);
-                                localStorage.setItem('scheduleView', newView);
-                            }
-                        }}
-                        size="large"
-                    >
-                        <ToggleButton value="daily">📆 Daily View</ToggleButton>
-                        <ToggleButton value="weekly">📅 Weekly View</ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
-
-                {loading ? (
-                    <LoadingSpinner message={`Generating your ${view} schedule...`} />
-                ) : !schedule && !weeklySchedule ? (
-                    <Paper sx={{ p: 6, textAlign: 'center' }}>
-                        <CalendarMonthIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                        <Typography variant="h6" gutterBottom>
-                            No Schedule Generated
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                            Click "Generate {view === 'daily' ? 'Daily' : 'Weekly'} Schedule" to create a personalized study schedule
-                        </Typography>
-                    </Paper>
-                ) : view === 'daily' && schedule ? (
-                    renderDailySchedule()
-                ) : view === 'weekly' && weeklySchedule ? (
-                    renderWeeklySchedule()
-                ) : null}
-
-                {studyTechnique !== 'none' && (schedule || weeklySchedule) && (
-                    <Paper sx={{ p: 3, mt: 4, bgcolor: 'info.light' }}>
-                        <Typography variant="h6" gutterBottom fontWeight={600}>
-                            {studyTechnique === 'pomodoro' && '🍅 Pomodoro Technique Active'}
-                            {studyTechnique === 'timeblocking' && '⏰ Time Blocking Active'}
-                            {studyTechnique === '52-17' && '🔬 52-17 Method Active'}
-                        </Typography>
-                        <Typography variant="body2">
-                            {studyTechnique === 'pomodoro' && 'Your schedule uses 25-minute focused work sessions followed by 5-minute breaks.'}
-                            {studyTechnique === 'timeblocking' && 'Your schedule uses 2-hour deep work blocks followed by 15-minute breaks.'}
-                            {studyTechnique === '52-17' && 'Your schedule uses the scientifically optimal 52-minute work sessions followed by 17-minute breaks.'}
-                            {' '}This proven technique helps maintain productivity and prevents burnout!
-                        </Typography>
-                    </Paper>
-                )}
-            </Container>
-
-            {/* Settings Dialog */}
-            <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Schedule Settings</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
-                        <TextField
-                            label="Work Hours Start"
-                            type="number"
-                            value={workHoursStart}
-                            onChange={(e) => setWorkHoursStart(parseInt(e.target.value))}
-                            InputProps={{ inputProps: { min: 0, max: 23 } }}
-                            helperText="Hour in 24-hour format (0-23)"
-                            fullWidth
-                        />
-                        <TextField
-                            label="Work Hours End"
-                            type="number"
-                            value={workHoursEnd}
-                            onChange={(e) => setWorkHoursEnd(parseInt(e.target.value))}
-                            InputProps={{ inputProps: { min: 0, max: 23 } }}
-                            helperText="Hour in 24-hour format (0-23)"
-                            fullWidth
-                        />
-                        <Box>
-                            <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-                                Study Technique
-                            </Typography>
-                            <ToggleButtonGroup
-                                value={studyTechnique}
-                                exclusive
-                                onChange={(e, value) => value && setStudyTechnique(value)}
-                                orientation="vertical"
-                                fullWidth
+                            <Button
+                                variant="contained"
+                                startIcon={<CalendarMonthIcon />}
+                                onClick={handleGenerateSchedule}
+                                disabled={loading}
                             >
-                                <ToggleButton value="pomodoro">
-                                    <Box sx={{ textAlign: 'left', width: '100%' }}>
-                                        <Typography variant="body2" fontWeight={600}>🍅 Pomodoro</Typography>
-                                        <Typography variant="caption" color="text.secondary">25min work / 5min break</Typography>
-                                    </Box>
-                                </ToggleButton>
-                                <ToggleButton value="timeblocking">
-                                    <Box sx={{ textAlign: 'left', width: '100%' }}>
-                                        <Typography variant="body2" fontWeight={600}>⏰ Time Blocking</Typography>
-                                        <Typography variant="caption" color="text.secondary">2hr deep work / 15min break</Typography>
-                                    </Box>
-                                </ToggleButton>
-                                <ToggleButton value="52-17">
-                                    <Box sx={{ textAlign: 'left', width: '100%' }}>
-                                        <Typography variant="body2" fontWeight={600}>🔬 52-17 Method</Typography>
-                                        <Typography variant="caption" color="text.secondary">52min work / 17min break</Typography>
-                                    </Box>
-                                </ToggleButton>
-                                <ToggleButton value="none">
-                                    <Box sx={{ textAlign: 'left', width: '100%' }}>
-                                        <Typography variant="body2" fontWeight={600}>📝 Continuous</Typography>
-                                        <Typography variant="caption" color="text.secondary">No breaks</Typography>
-                                    </Box>
-                                </ToggleButton>
-                            </ToggleButtonGroup>
+                                Generate {view === 'daily' ? 'Daily' : 'Weekly'} Schedule
+                            </Button>
+                            {(schedule || weeklySchedule) && (
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<SyncIcon />}
+                                    onClick={handleSyncToCalendar}
+                                    disabled={syncing}
+                                >
+                                    Sync to Calendar
+                                </Button>
+                            )}
                         </Box>
                     </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
-                    <Button onClick={() => setSettingsOpen(false)} variant="contained">
-                        Save Settings
-                    </Button>
-                </DialogActions>
-            </Dialog>
+
+                    <Grid container spacing={3}>
+                        {/* Main Content */}
+                        <Grid item xs={12}>
+                            <Box sx={{ mb: 3 }}>
+                                <ToggleButtonGroup
+                                    value={view}
+                                    exclusive
+                                    onChange={(e, newView) => {
+                                        if (newView) {
+                                            setView(newView);
+                                            localStorage.setItem('scheduleView', newView);
+                                        }
+                                    }}
+                                    size="large"
+                                >
+                                    <ToggleButton value="daily">📆 Daily View</ToggleButton>
+                                    <ToggleButton value="weekly">📅 Weekly View</ToggleButton>
+                                </ToggleButtonGroup>
+                            </Box>
+
+                            {loading ? (
+                                <LoadingSpinner message={`Generating your ${view} schedule...`} />
+                            ) : !schedule && !weeklySchedule ? (
+                                <Paper sx={{ p: 6, textAlign: 'center' }}>
+                                    <CalendarMonthIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                                    <Typography variant="h6" gutterBottom>
+                                        No Schedule Generated
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                        Click "Generate {view === 'daily' ? 'Daily' : 'Weekly'} Schedule" to create a personalized study schedule
+                                    </Typography>
+                                </Paper>
+                            ) : view === 'daily' && schedule ? (
+                                renderDailySchedule()
+                            ) : view === 'weekly' && weeklySchedule ? (
+                                renderWeeklySchedule()
+                            ) : null}
+
+                            {studyTechnique !== 'none' && (schedule || weeklySchedule) && (
+                                <Paper sx={{ p: 3, mt: 4, bgcolor: 'info.light' }}>
+                                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                                        {studyTechnique === 'pomodoro' && '🍅 Pomodoro Technique Active'}
+                                        {studyTechnique === 'timeblocking' && '⏰ Time Blocking Active'}
+                                        {studyTechnique === '52-17' && '🔬 52-17 Method Active'}
+                                    </Typography>
+
+                                    <Typography variant="body2">
+                                        {studyTechnique === 'pomodoro' && 'Your schedule uses 25-minute focused work sessions followed by 5-minute breaks.'}
+                                        {studyTechnique === 'timeblocking' && 'Your schedule uses 2-hour deep work blocks followed by 15-minute breaks.'}
+                                        {studyTechnique === '52-17' && 'Your schedule uses the scientifically optimal 52-minute work sessions followed by 17-minute breaks.'}
+                                        {' '}This proven technique helps maintain productivity and prevents burnout!
+                                    </Typography>
+                                </Paper>
+                            )}
+                        </Grid>
+                    </Grid>
+                </Box>
+
+                {/* Settings Dialog */}
+                <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+                    <DialogTitle>Schedule Settings</DialogTitle>
+                    <DialogContent>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+                            <TextField
+                                label="Work Hours Start"
+                                type="number"
+                                value={workHoursStart}
+                                onChange={(e) => setWorkHoursStart(parseInt(e.target.value))}
+                                InputProps={{ inputProps: { min: 0, max: 23 } }}
+                                helperText="Hour in 24-hour format (0-23)"
+                                fullWidth
+                            />
+                            <TextField
+                                label="Work Hours End"
+                                type="number"
+                                value={workHoursEnd}
+                                onChange={(e) => setWorkHoursEnd(parseInt(e.target.value))}
+                                InputProps={{ inputProps: { min: 0, max: 23 } }}
+                                helperText="Hour in 24-hour format (0-23)"
+                                fullWidth
+                            />
+                            <Box>
+                                <Typography variant="subtitle2" gutterBottom fontWeight={600}>
+                                    Study Technique
+                                </Typography>
+                                <ToggleButtonGroup
+                                    value={studyTechnique}
+                                    exclusive
+                                    onChange={(e, value) => value && setStudyTechnique(value)}
+                                    orientation="vertical"
+                                    fullWidth
+                                >
+                                    <ToggleButton value="pomodoro">
+                                        <Box sx={{ textAlign: 'left', width: '100%' }}>
+                                            <Typography variant="body2" fontWeight={600}>🍅 Pomodoro</Typography>
+                                            <Typography variant="caption" color="text.secondary">25min work / 5min break</Typography>
+                                        </Box>
+                                    </ToggleButton>
+                                    <ToggleButton value="timeblocking">
+                                        <Box sx={{ textAlign: 'left', width: '100%' }}>
+                                            <Typography variant="body2" fontWeight={600}>⏰ Time Blocking</Typography>
+                                            <Typography variant="caption" color="text.secondary">2hr deep work / 15min break</Typography>
+                                        </Box>
+                                    </ToggleButton>
+                                    <ToggleButton value="52-17">
+                                        <Box sx={{ textAlign: 'left', width: '100%' }}>
+                                            <Typography variant="body2" fontWeight={600}>🔬 52-17 Method</Typography>
+                                            <Typography variant="caption" color="text.secondary">52min work / 17min break</Typography>
+                                        </Box>
+                                    </ToggleButton>
+                                    <ToggleButton value="none">
+                                        <Box sx={{ textAlign: 'left', width: '100%' }}>
+                                            <Typography variant="body2" fontWeight={600}>📝 Continuous</Typography>
+                                            <Typography variant="caption" color="text.secondary">No breaks</Typography>
+                                        </Box>
+                                    </ToggleButton>
+                                </ToggleButtonGroup>
+                            </Box>
+                        </Box>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
+                        <Button onClick={() => setSettingsOpen(false)} variant="contained">
+                            Save Settings
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+            </Layout>
         </ProtectedRoute>
     );
 }
+

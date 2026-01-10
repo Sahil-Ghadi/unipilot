@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
-from app.routes import auth, tasks, syllabus, schedule, calendar, projects
+from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications
+import socketio
+
+# Import Socket.IO server
+from app.websocket.chat import sio
 
 # Create FastAPI app
 app = FastAPI(
@@ -26,6 +30,8 @@ app.include_router(syllabus.router)
 app.include_router(schedule.router)
 app.include_router(calendar.router)
 app.include_router(projects.router)
+app.include_router(notifications.router)
+
 
 @app.get("/")
 async def root():
@@ -33,7 +39,8 @@ async def root():
     return {
         "message": "Welcome to UniPilot API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
+        "socketio": "Socket.IO available at /socket.io/"
     }
 
 @app.get("/health")
@@ -41,11 +48,24 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
 
+# Combine FastAPI and Socket.IO into single ASGI app
+socket_app = socketio.ASGIApp(
+    socketio_server=sio,
+    other_asgi_app=app
+)
+
 if __name__ == "__main__":
     import uvicorn
+    print("🚀 Starting UniPilot API with WebSocket support...")
+    print("📡 Socket.IO endpoint: http://localhost:8000/socket.io/")
+    print("📚 API docs: http://localhost:8000/docs")
     uvicorn.run(
-        "app.main:app",
+        socket_app,  # Run the combined app directly
         host=settings.host,
         port=settings.port,
-        reload=True
+        reload=False,  # Disable reload for now to test
+        log_level="info"
     )
+
+# Force reload
+

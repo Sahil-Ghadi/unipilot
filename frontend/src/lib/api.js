@@ -86,11 +86,11 @@ export const scheduleAPI = {
 
 // Calendar endpoints
 export const calendarAPI = {
-    getAuthUrl: (state) => api.get('/api/calendar/auth-url', { params: { state } }),
-    handleCallback: (code) => api.post('/api/calendar/callback', { code }),
-    syncToCalendar: (data) => api.post('/api/calendar/sync', data),
-    getEvents: (timeMin, timeMax, maxResults) =>
-        api.get('/api/calendar/events', { params: { time_min: timeMin, time_max: timeMax, max_results: maxResults } }),
+    getAuthUrl: () => api.get('/api/calendar/auth-url'),
+    getStatus: () => api.get('/api/calendar/status'),
+    disconnect: () => api.post('/api/calendar/disconnect'),
+    syncTask: (taskId) => api.post(`/api/calendar/sync-task/${taskId}`),
+    syncAll: () => api.post('/api/calendar/sync-all'),
 };
 
 // Project endpoints
@@ -106,4 +106,27 @@ export const projectsAPI = {
         api.post(`/api/projects/${projectId}/tasks/${taskId}/assign`, { user_id: userId }),
 };
 
+// Notification endpoints
+export const notificationsAPI = {
+    getNotifications: () => api.get('/api/notifications'),
+    acceptInvite: (notificationId) => api.post(`/api/notifications/${notificationId}/accept`),
+    rejectInvite: (notificationId) => api.post(`/api/notifications/${notificationId}/reject`),
+    deleteNotification: (notificationId) => api.delete(`/api/notifications/${notificationId}`),
+};
+
 export default api;
+
+// Project Task endpoints
+export const projectTasksAPI = {
+    createTask: (projectId, taskData) => api.post(`/api/projects/${projectId}/tasks`, taskData),
+    getTasks: (projectId) => api.get(`/api/projects/${projectId}/tasks`),
+    updateTask: (projectId, taskId, taskData) => api.put(`/api/projects/${projectId}/tasks/${taskId}`, taskData),
+    completeTask: (projectId, taskId) => api.post(`/api/projects/${projectId}/tasks/${taskId}/complete`),
+    deleteTask: (projectId, taskId) => api.delete(`/api/projects/${projectId}/tasks/${taskId}`),
+};
+
+
+
+
+
+

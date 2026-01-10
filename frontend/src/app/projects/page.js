@@ -8,7 +8,6 @@ import {
     Button,
     Card,
     CardContent,
-    CardActions,
     Grid,
     Dialog,
     DialogTitle,
@@ -18,9 +17,10 @@ import {
     Chip,
     Avatar,
     AvatarGroup,
+    Divider
 } from '@mui/material';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import Navbar from '@/components/Navbar';
+import Layout from '@/components/Layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { projectsAPI, setAuthToken } from '@/lib/api';
@@ -33,15 +33,17 @@ export default function ProjectsPage() {
     const router = useRouter();
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [formData, setFormData] = useState({
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [newProject, setNewProject] = useState({
         name: '',
         description: '',
     });
 
     useEffect(() => {
-        loadProjects();
-    }, []);
+        if (user) {
+            loadProjects();
+        }
+    }, [user]);
 
     const loadProjects = async () => {
         try {
@@ -57,21 +59,20 @@ export default function ProjectsPage() {
         }
     };
 
-    const handleOpenDialog = () => {
-        setFormData({ name: '', description: '' });
-        setOpenDialog(true);
-    };
-
+    const handleOpenDialog = () => setDialogOpen(true);
     const handleCloseDialog = () => {
-        setOpenDialog(false);
+        setDialogOpen(false);
+        setNewProject({ name: '', description: '' });
     };
 
-    const handleSubmit = async () => {
+    const handleCreateProject = async () => {
+        if (!newProject.name.trim()) return;
+
         try {
             const token = await getIdToken();
             setAuthToken(token);
 
-            await projectsAPI.createProject(formData);
+            await projectsAPI.createProject(newProject);
             handleCloseDialog();
             loadProjects();
         } catch (error) {
@@ -79,124 +80,162 @@ export default function ProjectsPage() {
         }
     };
 
-    const handleViewProject = (projectId) => {
-        router.push(`/projects/${projectId}`);
-    };
-
     return (
         <ProtectedRoute>
-            <Navbar />
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight={700}>
-                        Group Projects
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenDialog}
-                    >
-                        New Project
-                    </Button>
-                </Box>
-
-                {loading ? (
-                    <LoadingSpinner />
-                ) : projects.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', mt: 8 }}>
-                        <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                        <Typography variant="h6" gutterBottom>
-                            No Projects Yet
+            <Layout>
+                <Box maxWidth="lg" sx={{ mx: 'auto' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h4" fontWeight={700}>
+                            Group Projects
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                            Create your first group project to collaborate with classmates
-                        </Typography>
-                        <Button variant="contained" onClick={handleOpenDialog}>
-                            Create Project
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenDialog}
+                        >
+                            New Project
                         </Button>
                     </Box>
-                ) : (
-                    <Grid container spacing={3}>
-                        {projects.map((project) => (
-                            <Grid item xs={12} md={6} key={project.id}>
-                                <Card>
-                                    <CardContent>
-                                        <Typography variant="h6" gutterBottom fontWeight={600}>
-                                            {project.name}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            {project.description || 'No description'}
-                                        </Typography>
 
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Members
+                    {loading ? (
+                        <LoadingSpinner />
+                    ) : projects.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', mt: 8 }}>
+                            <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                No Projects Yet
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                Create your first group project to collaborate with classmates
+                            </Typography>
+                            <Button variant="contained" onClick={handleOpenDialog}>
+                                Create Project
+                            </Button>
+                        </Box>
+                    ) : (
+                        <Grid container spacing={3}>
+                            {projects.map((project) => (
+                                <Grid item xs={12} md={6} lg={4} key={project.id}>
+                                    <Card
+                                        sx={{
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease-in-out',
+                                            '&:hover': {
+                                                transform: 'translateY(-4px)',
+                                                boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                                            }
+                                        }}
+                                        onClick={() => router.push(`/projects/${project.id}`)}
+                                    >
+                                        <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                                <Typography variant="h6" fontWeight={600} sx={{ flex: 1 }}>
+                                                    {project.name}
                                                 </Typography>
-                                                <AvatarGroup max={4} sx={{ mt: 1 }}>
-                                                    {project.members?.map((member, idx) => (
-                                                        <Avatar key={idx} sx={{ width: 32, height: 32 }}>
+                                                <Chip
+                                                    label={project.members?.length || 0}
+                                                    size="small"
+                                                    icon={<GroupIcon sx={{ fontSize: '1rem' }} />}
+                                                    sx={{ ml: 1 }}
+                                                />
+                                            </Box>
+
+                                            <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                sx={{
+                                                    mb: 3,
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden',
+                                                    minHeight: '2.5em'
+                                                }}
+                                            >
+                                                {project.description || 'No description'}
+                                            </Typography>
+
+                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                                                <Chip
+                                                    label={`${project.task_ids?.length || 0} tasks`}
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                                {project.owner_id === user?.uid && (
+                                                    <Chip
+                                                        label="Owner"
+                                                        size="small"
+                                                        color="primary"
+                                                        variant="outlined"
+                                                    />
+                                                )}
+                                            </Box>
+
+                                            <Divider sx={{ my: 2 }} />
+
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
+                                                    {project.members?.slice(0, 4).map((member, idx) => (
+                                                        <Avatar
+                                                            key={idx}
+                                                            sx={{
+                                                                width: 28,
+                                                                height: 28,
+                                                                fontSize: '0.75rem',
+                                                                bgcolor: 'primary.main'
+                                                            }}
+                                                        >
                                                             {member.display_name?.[0] || member.email[0].toUpperCase()}
                                                         </Avatar>
                                                     ))}
                                                 </AvatarGroup>
-                                            </Box>
-
-                                            <Box>
-                                                {project.owner_id === user?.uid && (
-                                                    <Chip label="Owner" size="small" color="primary" />
+                                                {project.members?.length > 4 && (
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        +{project.members.length - 4} more
+                                                    </Typography>
                                                 )}
                                             </Box>
-                                        </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
 
-                                        <Box sx={{ mt: 2 }}>
-                                            <Chip
-                                                label={`${project.task_ids?.length || 0} tasks`}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        </Box>
-                                    </CardContent>
-                                    <CardActions>
-                                        <Button size="small" onClick={() => handleViewProject(project.id)}>
-                                            View Details
-                                        </Button>
-                                    </CardActions>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
-                )}
-
-                {/* Create Project Dialog */}
-                <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-                    <DialogTitle>Create New Project</DialogTitle>
-                    <DialogContent>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                    {/* Create Project Dialog */}
+                    <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+                        <DialogTitle>Create New Project</DialogTitle>
+                        <DialogContent>
                             <TextField
+                                autoFocus
+                                margin="dense"
                                 label="Project Name"
                                 fullWidth
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                value={newProject.name}
+                                onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
                             />
                             <TextField
+                                margin="dense"
                                 label="Description"
                                 fullWidth
                                 multiline
                                 rows={3}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                value={newProject.description}
+                                onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
                             />
-                        </Box>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={handleCloseDialog}>Cancel</Button>
-                        <Button onClick={handleSubmit} variant="contained">
-                            Create
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-            </Container>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={handleCloseDialog}>Cancel</Button>
+                            <Button onClick={handleCreateProject} variant="contained">
+                                Create
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
+                </Box>
+            </Layout>
         </ProtectedRoute>
     );
 }

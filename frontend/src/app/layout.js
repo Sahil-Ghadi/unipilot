@@ -2,26 +2,12 @@
 
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from '@/contexts/AuthContext';
+import theme from '@/theme/theme';
 
 const inter = Inter({ subsets: ["latin"] });
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: inter.style.fontFamily,
-  },
-});
 
 export default function RootLayout({ children }) {
   return (
