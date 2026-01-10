@@ -20,6 +20,7 @@ class WeeklyScheduleRequest(BaseModel):
     work_hours_start: int = 9
     work_hours_end: int = 17
     study_technique: str = 'pomodoro'
+    custom_preferences: str = ''
 
 @router.post("/generate", response_model=Schedule)
 async def generate_schedule(
@@ -99,12 +100,13 @@ async def generate_weekly_schedule(
         print(f"[Weekly] Generating schedule...")
         
         # Generate weekly schedule
-        weekly_schedule = schedule_service.generate_weekly_schedule(
+        weekly_schedule = await schedule_service.generate_weekly_schedule(
             tasks,
             request.start_date,
             request.work_hours_start,
             request.work_hours_end,
-            request.study_technique
+            request.study_technique,
+            request.custom_preferences
         )
         
         # Save each day's schedule
