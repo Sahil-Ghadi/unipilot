@@ -21,6 +21,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Layout from '@/components/Layout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
+import BurnoutDialog from '@/components/BurnoutDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { tasksAPI, setAuthToken } from '@/lib/api';
 import AddIcon from '@mui/icons-material/Add';
@@ -36,6 +37,8 @@ export default function TasksPage() {
     const [openDialog, setOpenDialog] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
+    const [burnoutDialogOpen, setBurnoutDialogOpen] = useState(false);
+    const [completedTaskForRating, setCompletedTaskForRating] = useState(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -191,11 +194,71 @@ export default function TasksPage() {
             setAuthToken(token);
 
             await tasksAPI.updateTask(taskId, { status: 'completed' });
-            toast.success('🎉 Task completed! Great job!');
-            loadTasks();
+
+            // Find completed task for burnout rating
+            const completedTask = tasks.find(t => t.id === taskId);
+            if (completedTask) {
+                setCompletedTaskForRating(completedTask);
+                setBurnoutDialogOpen(true);
+            }
+
+            await loadTasks();
+            toast.success('Task marked as completed!');
         } catch (error) {
             console.error('Error completing task:', error);
             toast.error('Failed to complete task');
+        }
+    };
+
+    const handleTimerStart = async (taskId) => {
+        try {
+            const token = await getIdToken();
+            setAuthToken(token);
+
+            await tasksAPI.startTimer(taskId);
+            await loadTasks();
+            toast.success('Timer started!');
+        } catch (error) {
+            console.error('Error starting timer:', error);
+            toast.error(error.response?.data?.detail || 'Failed to start timer');
+        }
+    };
+
+    const handleTimerPause = async (taskId) => {
+        try {
+            const token = await getIdToken();
+            setAuthToken(token);
+
+            const response = await tasksAPI.pauseTimer(taskId);
+            await loadTasks();
+
+            const duration = response.data?.duration_minutes || 0;
+            toast.success(`Timer paused! Session: ${Math.round(duration)} minutes`);
+        } catch (error) {
+            console.error('Error pausing timer:', error);
+            toast.error('Failed to pause timer');
+        }
+    };
+
+    const handleBurnoutSubmit = async (rating) => {
+        if (!completedTaskForRating) return;
+
+        try {
+            const token = await getIdToken();
+            setAuthToken(token);
+
+            const response = await tasksAPI.submitBurnoutRating(completedTaskForRating.id, rating);
+
+            // Show recommendations
+            const recommendations = response.data?.recommendations || [];
+            if (recommendations.length > 0) {
+                toast.info(recommendations[0], { autoClose: 5000 });
+            }
+
+            setCompletedTaskForRating(null);
+        } catch (error) {
+            console.error('Error submitting burnout rating:', error);
+            toast.error('Failed to submit rating');
         }
     };
 
@@ -282,6 +345,8 @@ export default function TasksPage() {
                                 onEdit={handleOpenDialog}
                                 onDelete={handleDelete}
                                 onComplete={handleComplete}
+                                onTimerStart={handleTimerStart}
+                                onTimerPause={handleTimerPause}
                             />
                         ))
                     )}
@@ -343,6 +408,19 @@ export default function TasksPage() {
                         </DialogActions>
                     </Dialog>
                 </Container>
+
+                <ToastContainer position="bottom-right" />
+
+                {/* Burnout Dialog */}
+                <BurnoutDialog
+                    open={burnoutDialogOpen}
+                    onClose={() => {
+                        setBurnoutDialogOpen(false);
+                        setCompletedTaskForRating(null);
+                    }}
+                    onSubmit={handleBurnoutSubmit}
+                    taskTitle={completedTaskForRating?.title || ''}
+                />
             </Layout>
         </ProtectedRoute>
     );

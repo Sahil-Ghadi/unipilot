@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     cloudinary_api_key: Optional[str] = None
     cloudinary_api_secret: Optional[str] = None
     
+    # YouTube Data API
+    youtube_api_key: Optional[str] = None
+    
+    # Google Custom Search API
+    google_search_api_key: Optional[str] = None
+    google_search_engine_id: Optional[str] = None
+    
     # CORS Settings
     frontend_url: str = "http://localhost:3000"
     

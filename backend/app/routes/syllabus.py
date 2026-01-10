@@ -31,35 +31,49 @@ async def upload_and_extract_tasks(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload PDF file directly and extract tasks"""
+    """Upload PDF or image file and extract tasks"""
     if not ai_service:
         raise HTTPException(status_code=503, detail="AI service not configured. Please add GOOGLE_GEMINI_API_KEY to .env")
     
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    # Check file type
+    file_ext = file.filename.lower().split('.')[-1]
+    supported_extensions = ['pdf', 'jpg', 'jpeg', 'png']
+    
+    if file_ext not in supported_extensions:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unsupported file type. Please upload PDF, JPG, or PNG files."
+        )
     
     temp_path = None
     try:
         # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+        suffix = f'.{file_ext}'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
         
-        print(f"PDF saved to: {temp_path}")
+        print(f"File saved to: {temp_path}")
         
-        # Extract text from PDF
+        # Extract text based on file type
         try:
-            text = ai_service._extract_text_from_pdf(temp_path)
+            if file_ext == 'pdf':
+                print("Extracting text from PDF...")
+                text = ai_service._extract_text_from_pdf(temp_path)
+            else:  # Image files
+                print(f"Extracting text from image ({file_ext})...")
+                text = await ai_service.extract_text_from_image(temp_path)
+            
             print(f"Extracted text length: {len(text)}")
         except Exception as e:
-            print(f"PDF extraction error: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Failed to extract text from PDF: {str(e)}")
+            print(f"Text extraction error: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Failed to extract text: {str(e)}")
         
-        if not text or len(text.strip()) < 100:
+        if not text or len(text.strip()) < 50:
             raise HTTPException(
                 status_code=400,
-                detail="Could not extract sufficient text from PDF. Please ensure it's a valid syllabus."
+                detail="Could not extract sufficient text. Please ensure the file contains a valid syllabus."
             )
         
         # Use AI to extract tasks
