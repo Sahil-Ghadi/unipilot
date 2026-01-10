@@ -20,8 +20,9 @@ export default function UploadPage() {
         const file = event.target.files[0];
         if (!file) return;
 
-        if (file.type !== 'application/pdf') {
-            alert('Please upload a PDF file');
+        const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            alert('Please upload a PDF or image file (JPG, PNG)');
             return;
         }
 
@@ -53,6 +54,8 @@ export default function UploadPage() {
         }
     };
 
+    const isImage = selectedFile && selectedFile.type.startsWith('image/');
+
     return (
         <ProtectedRoute>
             <Layout>
@@ -61,7 +64,7 @@ export default function UploadPage() {
                         Upload Syllabus
                     </Typography>
                     <Typography variant="body1" color="text.secondary" gutterBottom>
-                        Upload your course syllabus PDF and let AI extract all assignments and deadlines
+                        Upload your course syllabus (PDF or Image) and let AI extract all assignments and deadlines
                     </Typography>
 
                     <Paper sx={{ p: 4, mt: 4, textAlign: 'center' }}>
@@ -76,21 +79,21 @@ export default function UploadPage() {
                         >
                             <CloudUploadIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
                             <Typography variant="h6" gutterBottom>
-                                {uploading ? 'Uploading...' : 'Upload PDF Syllabus'}
+                                {uploading ? 'Processing...' : 'Upload Syllabus'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                                Drag and drop or click to select a PDF file
+                                PDF, JPG, or PNG files supported
                             </Typography>
                             <Button
                                 variant="contained"
                                 component="label"
                                 disabled={uploading}
                             >
-                                Select PDF
+                                Select File
                                 <input
                                     type="file"
                                     hidden
-                                    accept="application/pdf"
+                                    accept="application/pdf,image/jpeg,image/jpg,image/png"
                                     onChange={handleFileUpload}
                                 />
                             </Button>
@@ -103,7 +106,7 @@ export default function UploadPage() {
                                     {selectedFile.name}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                    Ready to extract tasks
+                                    {isImage ? 'Image ready for OCR' : 'Ready to extract tasks'}
                                 </Typography>
                                 <Button
                                     variant="contained"
@@ -122,7 +125,8 @@ export default function UploadPage() {
                             💡 Tips for best results
                         </Typography>
                         <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
-                            <li>Ensure your PDF is text-based (not scanned images)</li>
+                            <li>PDFs should be text-based (not scanned images)</li>
+                            <li>Images should be clear and well-lit for best OCR results</li>
                             <li>The syllabus should clearly list assignments and deadlines</li>
                             <li>Include course name and grading weights if available</li>
                             <li>You can edit extracted tasks before saving</li>

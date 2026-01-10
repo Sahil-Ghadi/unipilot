@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, Typography, Chip, Box, IconButton, LinearProgress } from '@mui/material';
-import { format } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -9,9 +9,14 @@ import SchoolIcon from '@mui/icons-material/School';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PercentIcon from '@mui/icons-material/Percent';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import { useRouter } from 'next/navigation';
+import TaskTimer from './TaskTimer';
 
-export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
+export default function TaskCard({ task, onEdit, onDelete, onComplete, onTimerStart, onTimerPause }) {
+    const router = useRouter();
     const isCompleted = task.status === 'completed';
+    const isInProgress = task.status === 'in-progress';
 
     const getPriorityColor = (score) => {
         if (score >= 70) return 'error';
@@ -28,9 +33,9 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
     const getDaysUntilDeadline = () => {
         if (!task.deadline) return null;
         try {
-            const deadline = new Date(task.deadline);
+            const deadline = parseISO(task.deadline);
             const now = new Date();
-            const diff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+            const diff = differenceInDays(deadline, now);
             return diff;
         } catch {
             return null;
@@ -42,7 +47,7 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
     const formatDeadline = () => {
         if (!task.deadline) return 'No deadline';
         try {
-            return format(new Date(task.deadline), 'PPP');
+            return format(parseISO(task.deadline), 'PPP');
         } catch {
             return 'Invalid date';
         }
@@ -76,45 +81,56 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
                         {task.title}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {!isCompleted && (
-                            <IconButton
-                                size="small"
-                                onClick={() => onComplete(task.id)}
-                                color="success"
-                                sx={{
-                                    '&:hover': {
-                                        transform: 'scale(1.1)',
-                                        bgcolor: 'success.light'
-                                    }
-                                }}
-                            >
-                                <CheckCircleIcon />
-                            </IconButton>
-                        )}
+                        <IconButton
+                            size="small"
+                            onClick={() => router.push(`/tasks/${task.id}`)}
+                            sx={{
+                                '&:hover': {
+                                    bgcolor: 'primary.light',
+                                    transform: 'scale(1.1)'
+                                }
+                            }}
+                        >
+                            <MenuBookIcon fontSize="small" />
+                        </IconButton>
                         <IconButton
                             size="small"
                             onClick={() => onEdit(task)}
                             sx={{
                                 '&:hover': {
+                                    bgcolor: 'primary.light',
                                     transform: 'scale(1.1)'
                                 }
                             }}
                         >
-                            <EditIcon />
+                            <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                             size="small"
                             onClick={() => onDelete(task.id)}
-                            color="error"
                             sx={{
                                 '&:hover': {
-                                    transform: 'scale(1.1)',
-                                    bgcolor: 'error.light'
+                                    bgcolor: 'error.light',
+                                    transform: 'scale(1.1)'
                                 }
                             }}
                         >
-                            <DeleteIcon />
+                            <DeleteIcon fontSize="small" />
                         </IconButton>
+                        {!isCompleted && (
+                            <IconButton
+                                size="small"
+                                onClick={() => onComplete(task.id)}
+                                sx={{
+                                    '&:hover': {
+                                        bgcolor: 'success.light',
+                                        transform: 'scale(1.1)'
+                                    }
+                                }}
+                            >
+                                <CheckCircleIcon fontSize="small" />
+                            </IconButton>
+                        )}
                     </Box>
                 </Box>
 
@@ -202,6 +218,18 @@ export default function TaskCard({ task, onEdit, onDelete, onComplete }) {
 
                 {task.status === 'in-progress' && (
                     <LinearProgress sx={{ mt: 1, borderRadius: 1 }} />
+                )}
+
+                {/* Timer Widget */}
+                {!isCompleted && (
+                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                        <TaskTimer
+                            task={task}
+                            isActive={isInProgress}
+                            onTimerStart={() => onTimerStart?.(task.id)}
+                            onTimerPause={() => onTimerPause?.(task.id)}
+                        />
+                    </Box>
                 )}
             </CardContent>
         </Card>
