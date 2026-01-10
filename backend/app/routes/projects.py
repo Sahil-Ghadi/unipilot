@@ -423,3 +423,54 @@ async def delete_project_task(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{project_id}/chat/summarize")
+async def generate_chat_summary(
+    project_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate AI summary of project chat messages"""
+    try:
+        # Import AI service
+        from app.services.ai_service import AIService
+        from app.config.settings import settings
+        
+        # Verify user is a member
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        is_member = (
+            project['owner_id'] == current_user['id'] or
+            any(m.get('user_id') == current_user['id'] for m in project.get('members', []))
+        )
+        
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a project member")
+        
+        # Check if AI service is configured
+        if not settings.google_gemini_api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="AI service not configured. Please add GOOGLE_GEMINI_API_KEY to environment variables."
+            )
+        
+        # Get recent messages (last 100)
+        messages = firebase_service.get_project_messages(project_id, limit=100)
+        
+        if not messages:
+            return {
+                "summary": "No messages to summarize yet.",
+                "message_count": 0,
+                "participants": []
+            }
+        
+        # Generate summary using AI
+        ai_service = AIService(settings.google_gemini_api_key)
+        summary_data = await ai_service.summarize_chat_messages(messages)
+        
+        return summary_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
