@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
 from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications
 import socketio
+import os
 
 # Import Socket.IO server
 from app.websocket.chat import sio
@@ -21,7 +22,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]  # Expose all response headers
+    expose_headers=["*"]
 )
 
 # Include routers
@@ -59,15 +60,12 @@ asgi_app = socket_app
 
 if __name__ == "__main__":
     import uvicorn
+    # Read PORT from environment variable, fallback to 8000 for local development
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         "app.main:asgi_app",
         host="0.0.0.0",
-        port=8000,   
+        port=port,   
         reload=False,
         log_level="info"
     )
-
-
-
-
-
