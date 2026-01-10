@@ -55,19 +55,19 @@ socket_app = socketio.ASGIApp(
     other_asgi_app=app
 )
 
+asgi_app = socket_app
+
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting UniPilot API with WebSocket support...")
-    print("📡 Socket.IO endpoint: http://localhost:8000/socket.io/")
-    print("📚 API docs: http://localhost:8000/docs")
     uvicorn.run(
-        socket_app,  # Run the combined app directly
-        host=settings.host,
-        port=settings.port,
-        reload=False,  # Disable reload for now to test
+        "app.main:asgi_app",
+        host="0.0.0.0",
+        port=8000,   
+        reload=False,
         log_level="info"
     )
 
-asgi_app = socket_app
-# Force reload
+
+
+
 
