@@ -33,3 +33,10 @@ htmlcov/
 
 # Logs
 *.log
+
+# Firebase service account key (IMPORTANT!)
+serviceAccountKey.json
+*.json
+*.pem
+
+
