@@ -34,6 +34,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { projectsAPI, projectTasksAPI, setAuthToken } from '@/lib/api';
 import { useProjectChat } from '@/hooks/useProjectChat';
 import axios from 'axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -136,10 +138,11 @@ export default function ProjectDetailPage() {
             const authToken = await getIdToken();
             setAuthToken(authToken);
             await projectTasksAPI.completeTask(projectId, taskId);
+            toast.success('🎉 Task completed! Great work!');
             loadProject();
         } catch (error) {
             console.error('Error completing task:', error);
-            alert(error.response?.data?.detail || 'Failed to complete task');
+            toast.error('Failed to complete task');
         }
     };
 
@@ -149,10 +152,11 @@ export default function ProjectDetailPage() {
             const authToken = await getIdToken();
             setAuthToken(authToken);
             await projectTasksAPI.deleteTask(projectId, taskId);
+            toast.success('Task deleted successfully!');
             loadProject();
         } catch (error) {
             console.error('Error deleting task:', error);
-            alert(error.response?.data?.detail || 'Failed to delete task');
+            toast.error('Failed to delete task');
         }
     };
 
@@ -181,6 +185,17 @@ export default function ProjectDetailPage() {
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    hideProgressBar={false}
+                    newestOnTop
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                />
                 <Box maxWidth="xl" sx={{ mx: 'auto' }}>
                     {/* Header */}
                     <Box sx={{ mb: 3 }}>
@@ -262,6 +277,7 @@ export default function ProjectDetailPage() {
                                     stopTyping={stopTyping}
                                     typingUsers={typingUsers}
                                     currentUser={user}
+                                    projectId={projectId}
                                 />
                             </Box>
                         </Grid>

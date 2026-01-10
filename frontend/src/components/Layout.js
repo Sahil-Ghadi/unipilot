@@ -5,15 +5,15 @@ import Sidebar from './Sidebar';
 
 export default function Layout({ children }) {
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
             <Sidebar />
             <Box
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: { xs: 2, md: 4 },
-                    ml: { xs: 0, md: '0px' },
-                    width: { xs: '100%', md: 'calc(100% - 240px)' },
+                    p: 3,
+                    bgcolor: '#F3F4F6',
+                    minHeight: '100vh',
                 }}
             >
                 {children}

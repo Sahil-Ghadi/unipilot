@@ -10,6 +10,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import GroupIcon from '@mui/icons-material/Group';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar() {
     const { user, signOut } = useAuth();
@@ -33,9 +34,12 @@ export default function Navbar() {
     return (
         <AppBar position="sticky" sx={{ bgcolor: 'primary.main' }}>
             <Toolbar>
-                <Typography variant="h6" component="div" sx={{ flexGrow: 0, mr: 4, fontWeight: 700 }}>
-                    🎓 UniPilot
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
+                        🎓 UniPilot
+                    </Typography>
+                    <NotificationBell />
+                </Box>
 
                 <Box sx={{ flexGrow: 1, display: 'flex', gap: 2 }}>
                     <Button

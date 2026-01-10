@@ -106,6 +106,11 @@ export const projectsAPI = {
         api.post(`/api/projects/${projectId}/tasks/${taskId}/assign`, { user_id: userId }),
 };
 
+export const projectChatAPI = {
+    getMessages: (projectId, limit = 50) => api.get(`/api/projects/${projectId}/messages`, { params: { limit } }),
+    generateSummary: (projectId) => api.post(`/api/projects/${projectId}/chat/summarize`),
+};
+
 // Notification endpoints
 export const notificationsAPI = {
     getNotifications: () => api.get('/api/notifications'),

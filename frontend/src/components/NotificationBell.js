@@ -94,7 +94,15 @@ export default function NotificationBell() {
 
     return (
         <>
-            <IconButton color="inherit" onClick={handleClick}>
+            <IconButton
+                onClick={() => router.push('/notifications')}
+                sx={{
+                    color: 'white',
+                    '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }}
+            >
                 <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon />
                 </Badge>

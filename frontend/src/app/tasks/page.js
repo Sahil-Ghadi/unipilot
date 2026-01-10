@@ -25,6 +25,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { tasksAPI, setAuthToken } from '@/lib/api';
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function TasksPage() {
     const { getIdToken, user } = useAuth();
@@ -61,7 +63,7 @@ export default function TasksPage() {
             const token = await getIdToken();
             if (!token) {
                 console.error('❌ No authentication token - user might not be logged in');
-                alert('Please log in to view tasks');
+                toast.error('Please log in to view tasks');
                 setTasks([]);
                 return;
             }
@@ -85,9 +87,9 @@ export default function TasksPage() {
             console.error('Error status:', error.response?.status);
 
             if (error.response?.status === 401) {
-                alert('Authentication failed. Please log out and log in again.');
+                toast.error('Authentication failed. Please log out and log in again.');
             } else {
-                alert(`Failed to load tasks: ${error.message}`);
+                toast.error(`Failed to load tasks: ${error.message}`);
             }
             setTasks([]);
         } finally {
@@ -102,8 +104,14 @@ export default function TasksPage() {
             filtered = filtered.filter(t => t.status === filterStatus);
         }
 
-        // Sort by priority
-        filtered.sort((a, b) => b.priority_score - a.priority_score);
+        // Sort: completed tasks at bottom, others by priority
+        filtered.sort((a, b) => {
+            // Completed tasks go to bottom
+            if (a.status === 'completed' && b.status !== 'completed') return 1;
+            if (a.status !== 'completed' && b.status === 'completed') return -1;
+            // Within same completion status, sort by priority
+            return b.priority_score - a.priority_score;
+        });
 
         setFilteredTasks(filtered);
     };
@@ -168,9 +176,11 @@ export default function TasksPage() {
                 setAuthToken(token);
 
                 await tasksAPI.deleteTask(taskId);
+                toast.success('Task deleted successfully!');
                 loadTasks();
             } catch (error) {
                 console.error('Error deleting task:', error);
+                toast.error('Failed to delete task');
             }
         }
     };
@@ -181,15 +191,28 @@ export default function TasksPage() {
             setAuthToken(token);
 
             await tasksAPI.updateTask(taskId, { status: 'completed' });
+            toast.success('🎉 Task completed! Great job!');
             loadTasks();
         } catch (error) {
             console.error('Error completing task:', error);
+            toast.error('Failed to complete task');
         }
     };
 
     return (
         <ProtectedRoute>
             <Layout>
+                <ToastContainer
+                    position="top-right"
+                    autoClose={3000}
+                    hideProgressBar={false}
+                    newestOnTop
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                />
                 <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                         <Typography variant="h4" fontWeight={700}>
@@ -205,27 +228,43 @@ export default function TasksPage() {
                     </Box>
 
                     {/* Filters */}
-                    <Box sx={{ mb: 3, display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Box sx={{ mb: 3, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                         <FilterListIcon color="action" />
                         <Chip
                             label="All"
                             onClick={() => setFilterStatus('all')}
                             color={filterStatus === 'all' ? 'primary' : 'default'}
+                            sx={{
+                                fontWeight: filterStatus === 'all' ? 600 : 400,
+                                '&:hover': { transform: 'scale(1.05)' }
+                            }}
                         />
                         <Chip
                             label="Pending"
                             onClick={() => setFilterStatus('pending')}
                             color={filterStatus === 'pending' ? 'primary' : 'default'}
+                            sx={{
+                                fontWeight: filterStatus === 'pending' ? 600 : 400,
+                                '&:hover': { transform: 'scale(1.05)' }
+                            }}
                         />
                         <Chip
                             label="In Progress"
                             onClick={() => setFilterStatus('in-progress')}
                             color={filterStatus === 'in-progress' ? 'primary' : 'default'}
+                            sx={{
+                                fontWeight: filterStatus === 'in-progress' ? 600 : 400,
+                                '&:hover': { transform: 'scale(1.05)' }
+                            }}
                         />
                         <Chip
                             label="Completed"
                             onClick={() => setFilterStatus('completed')}
                             color={filterStatus === 'completed' ? 'primary' : 'default'}
+                            sx={{
+                                fontWeight: filterStatus === 'completed' ? 600 : 400,
+                                '&:hover': { transform: 'scale(1.05)' }
+                            }}
                         />
                     </Box>
 

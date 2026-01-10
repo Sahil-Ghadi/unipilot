@@ -159,11 +159,7 @@ export default function ProjectsPage() {
                                             </Typography>
 
                                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                                                <Chip
-                                                    label={`${project.task_ids?.length || 0} tasks`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                />
+                                            
                                                 {project.owner_id === user?.uid && (
                                                     <Chip
                                                         label="Owner"

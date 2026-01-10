@@ -7,7 +7,7 @@ class TimeBlock(BaseModel):
     start_time: str = Field(..., description="Time in HH:MM format")
     end_time: str = Field(..., description="Time in HH:MM format")
     task_id: Optional[str] = None
-    type: Literal['work', 'break'] = 'work'
+    type: Literal['work', 'break', 'unavailable'] = 'work'
     title: str
     description: Optional[str] = None
 
@@ -18,6 +18,7 @@ class ScheduleCreate(BaseModel):
     work_hours_end: int = Field(default=17, ge=1, le=24)
     study_technique: str = 'pomodoro'
     task_ids: Optional[List[str]] = None  # If None, use all pending tasks
+    custom_preferences: Optional[str] = None  # Natural language preferences
 
 class Schedule(BaseModel):
     """Complete schedule model"""

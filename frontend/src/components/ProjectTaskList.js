@@ -25,6 +25,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { format } from 'date-fns';
 
 const priorityColors = {
@@ -119,9 +120,14 @@ export default function ProjectTaskList({
     return (
         <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" fontWeight={600}>
-                    Project Tasks
-                </Typography>
+                <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                        Project Tasks
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} • {tasks.filter(t => t.status === 'completed').length} completed
+                    </Typography>
+                </Box>
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
@@ -133,40 +139,78 @@ export default function ProjectTaskList({
             </Box>
 
             {tasks.length === 0 ? (
-                <Card sx={{ textAlign: 'center', py: 4 }}>
+                <Card sx={{ textAlign: 'center', py: 6, bgcolor: 'grey.50', border: '2px dashed', borderColor: 'grey.300' }}>
+                    <Typography variant="h6" fontWeight={600} gutterBottom color="text.secondary">
+                        📋 No Tasks Yet
+                    </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        No tasks yet. Create your first task!
+                        Create your first task to get started!
                     </Typography>
                 </Card>
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {tasks.map((task) => (
-                        <Card key={task.id} sx={{ position: 'relative' }}>
+                        <Card
+                            key={task.id}
+                            sx={{
+                                position: 'relative',
+                                overflow: 'visible',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-4px)',
+                                    boxShadow: 6,
+                                },
+                                borderLeft: `4px solid ${task.status === 'completed' ? '#10b981' :
+                                    task.priority === 'high' ? '#ef4444' :
+                                        task.priority === 'medium' ? '#f59e0b' :
+                                            '#3b82f6'
+                                    }`,
+                            }}
+                        >
                             <CardContent>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                                     <Box sx={{ flex: 1 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                            <Typography variant="h6" fontWeight={600}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                                            <Typography variant="h6" fontWeight={600} sx={{
+                                                textDecoration: task.status === 'completed' ? 'line-through' : 'none',
+                                                color: task.status === 'completed' ? 'text.secondary' : 'text.primary'
+                                            }}>
                                                 {task.title}
                                             </Typography>
                                             <Chip
                                                 label={task.priority}
                                                 size="small"
                                                 color={priorityColors[task.priority]}
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    textTransform: 'uppercase',
+                                                    fontSize: '0.7rem'
+                                                }}
                                             />
                                             <Chip
                                                 label={task.status}
                                                 size="small"
                                                 color={statusColors[task.status]}
                                                 variant="outlined"
+                                                sx={{
+                                                    fontWeight: 500,
+                                                    fontSize: '0.7rem'
+                                                }}
                                             />
                                         </Box>
                                         {task.description && (
-                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>
                                                 {task.description}
                                             </Typography>
                                         )}
                                     </Box>
+                                    {task.due_date && (
+                                        <Chip
+                                            label={format(new Date(task.due_date), 'MMM dd, yyyy')}
+                                            size="small"
+                                            sx={{ fontSize: '0.75rem' }}
+                                        />
+                                    )}
                                 </Box>
 
                                 <Divider sx={{ my: 2 }} />
@@ -174,18 +218,13 @@ export default function ProjectTaskList({
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                                            <Avatar sx={{ width: 28, height: 28, fontSize: '0.8rem', bgcolor: 'primary.main' }}>
                                                 {task.assigned_to_name?.[0] || task.assigned_to_email[0].toUpperCase()}
                                             </Avatar>
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography variant="caption" color="text.secondary" fontWeight={500}>
                                                 {task.assigned_to_name || task.assigned_to_email}
                                             </Typography>
                                         </Box>
-                                        {task.due_date && (
-                                            <Typography variant="caption" color="text.secondary">
-                                                📅 {format(new Date(task.due_date), 'MMM dd, yyyy')}
-                                            </Typography>
-                                        )}
                                     </Box>
 
                                     <Box sx={{ display: 'flex', gap: 1 }}>
@@ -194,6 +233,12 @@ export default function ProjectTaskList({
                                                 size="small"
                                                 color="success"
                                                 onClick={() => onCompleteTask(task.id)}
+                                                sx={{
+                                                    '&:hover': {
+                                                        transform: 'scale(1.1)',
+                                                        bgcolor: 'success.light'
+                                                    }
+                                                }}
                                             >
                                                 <CheckCircleIcon />
                                             </IconButton>
@@ -202,6 +247,12 @@ export default function ProjectTaskList({
                                             <IconButton
                                                 size="small"
                                                 onClick={() => handleOpenEdit(task)}
+                                                sx={{
+                                                    '&:hover': {
+                                                        transform: 'scale(1.1)',
+                                                        bgcolor: 'action.hover'
+                                                    }
+                                                }}
                                             >
                                                 <EditIcon />
                                             </IconButton>
@@ -211,6 +262,12 @@ export default function ProjectTaskList({
                                                 size="small"
                                                 color="error"
                                                 onClick={() => onDeleteTask(task.id)}
+                                                sx={{
+                                                    '&:hover': {
+                                                        transform: 'scale(1.1)',
+                                                        bgcolor: 'error.light'
+                                                    }
+                                                }}
                                             >
                                                 <DeleteIcon />
                                             </IconButton>

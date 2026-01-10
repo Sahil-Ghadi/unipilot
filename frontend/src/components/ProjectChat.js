@@ -9,15 +9,31 @@ import {
     IconButton,
     Avatar,
     Chip,
-    Divider
+    Divider,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    CircularProgress
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import SummarizeIcon from '@mui/icons-material/Summarize';
+import CloseIcon from '@mui/icons-material/Close';
 import { format, parseISO } from 'date-fns';
+import { projectChatAPI, setAuthToken } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'react-toastify';
+import ReactMarkdown from 'react-markdown';
 
-export default function ProjectChat({ messages, isConnected, sendMessage, sendTyping, stopTyping, typingUsers, currentUser }) {
+export default function ProjectChat({ messages, isConnected, sendMessage, sendTyping, stopTyping, typingUsers, currentUser, projectId }) {
     const [inputMessage, setInputMessage] = useState('');
+    const [summaryOpen, setSummaryOpen] = useState(false);
+    const [summaryData, setSummaryData] = useState(null);
+    const [loadingSummary, setLoadingSummary] = useState(false);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const { getIdToken } = useAuth();
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -44,6 +60,30 @@ export default function ProjectChat({ messages, isConnected, sendMessage, sendTy
     const handleInputChange = (e) => {
         setInputMessage(e.target.value);
         sendTyping();
+    };
+
+    const handleGenerateSummary = async () => {
+        setLoadingSummary(true);
+        setSummaryOpen(true);
+        try {
+            const token = await getIdToken();
+            setAuthToken(token);
+
+            const response = await projectChatAPI.generateSummary(projectId);
+            setSummaryData(response.data);
+            toast.success('Summary generated successfully!');
+        } catch (error) {
+            console.error('Error generating summary:', error);
+            toast.error(error.response?.data?.detail || 'Failed to generate summary');
+            setSummaryOpen(false);
+        } finally {
+            setLoadingSummary(false);
+        }
+    };
+
+    const handleCloseSummary = () => {
+        setSummaryOpen(false);
+        setSummaryData(null);
     };
 
     const formatTime = (timestamp) => {
@@ -126,15 +166,27 @@ export default function ProjectChat({ messages, isConnected, sendMessage, sendTy
             {/* Header */}
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography variant="h6" fontWeight={600}>
-                        💬 Team Chat
-                    </Typography>
-                    <Chip
-                        label={isConnected ? 'Connected' : 'Disconnected'}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="h6" fontWeight={600}>
+                            💬 Team Chat
+                        </Typography>
+                        <Chip
+                            label={isConnected ? 'Connected' : 'Disconnected'}
+                            size="small"
+                            color={isConnected ? 'success' : 'error'}
+                            sx={{ fontSize: '0.75rem' }}
+                        />
+                    </Box>
+                    <Button
+                        variant="outlined"
                         size="small"
-                        color={isConnected ? 'success' : 'error'}
-                        sx={{ fontSize: '0.75rem' }}
-                    />
+                        startIcon={<SummarizeIcon />}
+                        onClick={handleGenerateSummary}
+                        disabled={messages.length === 0}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Generate Summary
+                    </Button>
                 </Box>
             </Box>
 
@@ -202,6 +254,134 @@ export default function ProjectChat({ messages, isConnected, sendMessage, sendTy
                     </IconButton>
                 </Box>
             </Box>
+
+            {/* Summary Dialog */}
+            <Dialog
+                open={summaryOpen}
+                onClose={handleCloseSummary}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" fontWeight={600}>
+                            💡 Chat Summary
+                        </Typography>
+                        <IconButton onClick={handleCloseSummary} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
+                </DialogTitle>
+                <DialogContent dividers>
+                    {loadingSummary ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+                            <CircularProgress />
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                                Generating summary...
+                            </Typography>
+                        </Box>
+                    ) : summaryData ? (
+                        <Box>
+                            <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                <Chip
+                                    label={`${summaryData.message_count} messages`}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                                <Chip
+                                    label={`${summaryData.participants?.length} participants`}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                />
+                            </Box>
+                            <Box
+                                sx={{
+                                    '& h1, & h2, & h3, & h4, & h5, & h6': {
+                                        fontWeight: 700,
+                                        mt: 3,
+                                        mb: 1.5,
+                                        color: 'primary.main'
+                                    },
+                                    '& h1': { fontSize: '1.5rem' },
+                                    '& h2': { fontSize: '1.25rem' },
+                                    '& h3': { fontSize: '1.1rem' },
+                                    '& p': {
+                                        mb: 1.5,
+                                        lineHeight: 1.7,
+                                        color: 'text.primary'
+                                    },
+                                    '& strong': {
+                                        fontWeight: 700,
+                                        color: 'text.primary'
+                                    },
+                                    '& ul, & ol': {
+                                        pl: 3,
+                                        mb: 2
+                                    },
+                                    '& li': {
+                                        mb: 0.75,
+                                        lineHeight: 1.6,
+                                        '&::marker': {
+                                            color: 'primary.main'
+                                        }
+                                    },
+                                    '& code': {
+                                        bgcolor: 'grey.100',
+                                        px: 0.75,
+                                        py: 0.25,
+                                        borderRadius: 0.5,
+                                        fontSize: '0.875rem',
+                                        fontFamily: 'monospace'
+                                    },
+                                    '& pre': {
+                                        bgcolor: 'grey.100',
+                                        p: 2,
+                                        borderRadius: 1,
+                                        overflow: 'auto',
+                                        mb: 2
+                                    },
+                                    '& blockquote': {
+                                        borderLeft: 4,
+                                        borderColor: 'primary.main',
+                                        pl: 2,
+                                        ml: 0,
+                                        fontStyle: 'italic',
+                                        color: 'text.secondary'
+                                    }
+                                }}
+                            >
+                                <ReactMarkdown>{summaryData.summary}</ReactMarkdown>
+                            </Box>
+                            {summaryData.participants && summaryData.participants.length > 0 && (
+                                <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                                        👥 Participants
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
+                                        {summaryData.participants.map((participant, idx) => (
+                                            <Chip
+                                                key={idx}
+                                                label={participant}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'primary.light',
+                                                    color: 'primary.contrastText',
+                                                    fontWeight: 500
+                                                }}
+                                            />
+                                        ))}
+                                    </Box>
+                                </Box>
+                            )}
+                        </Box>
+                    ) : null}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseSummary}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Paper>
     );
 }

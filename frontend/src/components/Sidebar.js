@@ -32,6 +32,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import { useEffect } from 'react';
 import { notificationsAPI, calendarAPI, setAuthToken } from '@/lib/api';
 import { CircularProgress } from '@mui/material';
+import NotificationBell from './NotificationBell';
 
 const DRAWER_WIDTH = 240;
 
@@ -41,7 +42,6 @@ const menuItems = [
     { text: 'Schedule', icon: CalendarMonthIcon, path: '/schedule' },
     { text: 'Projects', icon: GroupIcon, path: '/projects' },
     { text: 'Upload', icon: UploadFileIcon, path: '/upload' },
-    { text: 'Notifications', icon: NotificationsIcon, path: '/notifications' },
 ];
 
 export default function Sidebar() {
@@ -151,10 +151,11 @@ export default function Sidebar() {
     const drawer = (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#1F2937' }}>
             {/* Logo */}
-            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography variant="h5" sx={{ fontWeight: 700, color: 'white' }}>
-                    🎓 UniPilot
+                    UniPilot
                 </Typography>
+                <NotificationBell />
             </Box>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
