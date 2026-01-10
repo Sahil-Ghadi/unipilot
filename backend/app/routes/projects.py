@@ -121,41 +121,64 @@ async def delete_project(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/{project_id}/members", response_model=Project)
+@router.post("/{project_id}/members", response_model=dict)
 async def add_project_member(
     project_id: str,
     member_data: MemberAdd,
     current_user: dict = Depends(get_current_user)
 ):
-    """Add a member to a project"""
+    """Send project invitation to a user"""
     try:
         # Verify ownership
         project = firebase_service.get_project(project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         if project['owner_id'] != current_user['id']:
-            raise HTTPException(status_code=403, detail="Only project owner can add members")
+            raise HTTPException(status_code=403, detail="Only project owner can invite members")
         
         # Check if member already exists
         members = project.get('members', [])
         if any(m.get('email') == member_data.email for m in members):
-            raise HTTPException(status_code=400, detail="Member already in project")
+            raise HTTPException(status_code=400, detail="User already in project")
         
-        # Add member
-        member_dict = {
-            'user_id': '',  # Will be filled when user accepts invite
-            'email': member_data.email,
-            'display_name': None,
-            'role': 'member'
+        # Check if invitation already sent
+        existing_notifications = firebase_service.get_user_notifications(member_data.email)
+        pending_invite = any(
+            n.get('project_id') == project_id and 
+            n.get('status') == 'pending' and 
+            n.get('type') == 'project_invite'
+            for n in existing_notifications
+        )
+        
+        if pending_invite:
+            raise HTTPException(status_code=400, detail="Invitation already sent to this user")
+        
+        # Create invitation notification
+        notification_data = {
+            'type': 'project_invite',
+            'title': f'Project Invitation: {project["name"]}',
+            'message': f'{current_user.get("display_name", current_user["email"])} invited you to join "{project["name"]}"',
+            'from_user_id': current_user['id'],
+            'from_user_name': current_user.get('display_name', current_user['email']),
+            'to_user_email': member_data.email,
+            'project_id': project_id,
+            'metadata': {
+                'project_name': project['name'],
+                'project_description': project.get('description', '')
+            }
         }
         
-        updated_project = firebase_service.add_project_member(project_id, member_dict)
+        notification = firebase_service.create_notification(notification_data)
         
-        return updated_project
+        return {
+            "message": f"Invitation sent to {member_data.email}",
+            "notification_id": notification['id']
+        }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.delete("/{project_id}/members/{user_id}")
 async def remove_project_member(
@@ -221,7 +244,181 @@ async def assign_task_to_member(
             'assigned_to': assignment.user_id
         })
         
-        return {"message": "Task assigned successfully"}
+        return {
+            "message": "Task assigned successfully",
+            "project": project
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{project_id}/messages")
+async def get_project_messages(
+    project_id: str,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get message history for a project"""
+    try:
+        # Verify user is a member
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        is_member = (
+            project['owner_id'] == current_user['id'] or
+            any(m.get('user_id') == current_user['id'] for m in project.get('members', []))
+        )
+        
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a project member")
+        
+        # Get messages
+        messages = firebase_service.get_project_messages(project_id, limit)
+        
+        return {"messages": messages}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Project Task endpoints
+@router.post("/{project_id}/tasks")
+async def create_project_task(
+    project_id: str,
+    task_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a task in a project"""
+    try:
+        # Verify user is a project member
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        is_member = any(m['user_id'] == current_user['id'] for m in project.get('members', []))
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a project member")
+        
+        # Add creator info
+        task_data['created_by'] = current_user['id']
+        task_data['created_by_name'] = current_user.get('display_name') or current_user['email']
+        
+        task = firebase_service.create_project_task(project_id, task_data)
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{project_id}/tasks")
+async def get_project_tasks(
+    project_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all tasks for a project"""
+    try:
+        # Verify user is a project member
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        is_member = any(m['user_id'] == current_user['id'] for m in project.get('members', []))
+        if not is_member:
+            raise HTTPException(status_code=403, detail="Not a project member")
+        
+        tasks = firebase_service.get_project_tasks(project_id)
+        return {"tasks": tasks}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{project_id}/tasks/{task_id}")
+async def update_project_task(
+    project_id: str,
+    task_id: str,
+    update_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a task"""
+    try:
+        # Get task and project
+        task = firebase_service.get_project_task(project_id, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Check permissions: task creator or project owner
+        is_creator = task['created_by'] == current_user['id']
+        is_owner = any(m['user_id'] == current_user['id'] and m['role'] == 'owner' 
+                      for m in project.get('members', []))
+        
+        if not (is_creator or is_owner):
+            raise HTTPException(status_code=403, detail="Not authorized to edit this task")
+        
+        updated_task = firebase_service.update_project_task(project_id, task_id, update_data)
+        return updated_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{project_id}/tasks/{task_id}/complete")
+async def complete_project_task(
+    project_id: str,
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Mark a task as completed (only assigned user)"""
+    try:
+        # Get task
+        task = firebase_service.get_project_task(project_id, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Check if user is assigned to this task
+        if task['assigned_to'] != current_user['id']:
+            raise HTTPException(status_code=403, detail="Only assigned user can complete this task")
+        
+        completed_task = firebase_service.complete_project_task(project_id, task_id)
+        return completed_task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{project_id}/tasks/{task_id}")
+async def delete_project_task(
+    project_id: str,
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a task"""
+    try:
+        # Get task and project
+        task = firebase_service.get_project_task(project_id, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        project = firebase_service.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Check permissions: task creator or project owner
+        is_creator = task['created_by'] == current_user['id']
+        is_owner = any(m['user_id'] == current_user['id'] and m['role'] == 'owner' 
+                      for m in project.get('members', []))
+        
+        if not (is_creator or is_owner):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this task")
+        
+        firebase_service.delete_project_task(project_id, task_id)
+        return {"message": "Task deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
