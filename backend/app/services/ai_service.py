@@ -1,4 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from typing import List, Dict, Any
@@ -12,10 +12,17 @@ class AIService:
     
     def __init__(self, api_key: str):
         """Initialize LangChain with Google Gemini"""
+        self.api_key = api_key  # Store for Vision API
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-lite",
             google_api_key=api_key,
             temperature=0.3
+        )
+        
+        # Initialize embeddings model
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=api_key
         )
         
         # Prompt template for syllabus parsing
@@ -87,6 +94,55 @@ Be thorough and extract ALL tasks mentioned. If a deadline is not explicit, make
             raise Exception(f"Failed to extract text from PDF: {str(e)}")
         
         return text
+    
+    async def extract_text_from_image(self, image_path: str) -> str:
+        """Extract text from image using Gemini Vision API
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            Extracted text from the image
+        """
+        try:
+            import google.generativeai as genai
+            from PIL import Image
+            
+            # Configure Gemini
+            genai.configure(api_key=self.api_key)
+            
+            # Use Gemini Pro Vision model
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            
+            # Open and prepare image
+            img = Image.open(image_path)
+            
+            # Create prompt for OCR
+            prompt = """Extract ALL text from this image accurately. 
+            This appears to be a course syllabus or academic document.
+            Please transcribe all visible text including:
+            - Course name and details
+            - Assignment names and descriptions
+            - Deadlines and dates
+            - Grading information
+            - Any other text content
+            
+            Preserve the structure and formatting as much as possible."""
+            
+            # Generate content with image
+            response = model.generate_content([prompt, img])
+            
+            if not response or not response.text:
+                raise Exception("No text extracted from image")
+            
+            extracted_text = response.text.strip()
+            print(f"[OCR] Extracted {len(extracted_text)} characters from image")
+            
+            return extracted_text
+            
+        except Exception as e:
+            print(f"[OCR] Error: {str(e)}")
+            raise Exception(f"Failed to extract text from image: {str(e)}")
     
     async def extract_tasks_from_syllabus(self, syllabus_text: str) -> Dict[str, Any]:
         """Use LangChain + Gemini to extract tasks from syllabus text"""
@@ -346,3 +402,24 @@ Keep the summary concise and focus on the most important information. If there a
             
         except Exception as e:
             raise Exception(f"Failed to generate chat summary: {str(e)}")
+    
+    async def generate_embedding(self, text: str) -> List[float]:
+        """Generate embedding vector for text using Gemini
+        
+        Args:
+            text: Text to generate embedding for
+            
+        Returns:
+            List of floats representing the embedding vector
+        """
+        try:
+            print(f"[AIService] Generating embedding for text: {text[:100]}...")
+            embedding = await self.embeddings.aembed_query(text)
+            print(f"[AIService] Generated embedding with {len(embedding)} dimensions")
+            print(f"[AIService] First 5 values: {embedding[:5]}")
+            return embedding
+        except Exception as e:
+            print(f"[AIService] Error generating embedding: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise Exception(f"Failed to generate embedding: {str(e)}")
