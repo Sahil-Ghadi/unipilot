@@ -56,40 +56,39 @@ export default function TaskTimer({ task, onTimerStart, onTimerPause, isActive }
         return `${mins}m`;
     };
 
+    const getTotalSeconds = () => {
+        const storedSeconds = (task.total_time_spent || 0) * 60;
+        return storedSeconds + elapsedTime;
+    };
+
     return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
-                size="small"
                 onClick={isActive ? onTimerPause : onTimerStart}
                 sx={{
+                    width: 48,
+                    height: 48,
                     bgcolor: isActive ? 'warning.light' : 'success.light',
+                    color: isActive ? 'warning.dark' : 'success.dark',
                     '&:hover': {
                         bgcolor: isActive ? 'warning.main' : 'success.main',
-                        transform: 'scale(1.1)'
-                    }
+                        color: 'white',
+                        transform: 'scale(1.05)'
+                    },
+                    transition: 'all 0.2s'
                 }}
             >
-                {isActive ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
+                {isActive ? <PauseIcon sx={{ fontSize: 28 }} /> : <PlayArrowIcon sx={{ fontSize: 28 }} />}
             </IconButton>
 
-            {isActive && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <Typography variant="caption" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                        {formatTime(elapsedTime)}
-                    </Typography>
-                    {task.total_time_spent > 0 && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                            Total: {formatTotalTime(task.total_time_spent)}
-                        </Typography>
-                    )}
-                </Box>
-            )}
-
-            {!isActive && task.total_time_spent > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                    {formatTotalTime(task.total_time_spent)}
+            <Box>
+                <Typography variant="h6" fontWeight={700} sx={{ fontFamily: 'monospace', lineHeight: 1, letterSpacing: 1 }}>
+                    {formatTime(getTotalSeconds())}
                 </Typography>
-            )}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                    {isActive ? 'Session Active' : 'Total Time'}
+                </Typography>
+            </Box>
         </Box>
     );
 }

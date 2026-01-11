@@ -38,61 +38,54 @@ export default function LoginPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'radial-gradient(circle at 50% 50%, #EFF6FF 0%, #FAFAFA 100%)', // Subtle blue to white
+                p: 2
             }}
         >
-            <Container maxWidth="sm">
+            <Container maxWidth="xs">
                 <Paper
-                    elevation={10}
+                    elevation={0}
                     sx={{
-                        p: 6,
+                        p: 5,
                         textAlign: 'center',
-                        borderRadius: 4,
+                        borderRadius: 3,
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(10px)',
                     }}
                 >
-                    <Typography variant="h3" component="h1" gutterBottom fontWeight={700}>
-                        🎓 UniPilot
-                    </Typography>
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                        AI-Powered Assignment Planner
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mt: 2, mb: 4 }}>
-                        Automate your academic planning, reduce overwhelm, and optimize your time with intelligent AI assistance.
-                    </Typography>
-
-                    <Box sx={{ mt: 4 }}>
-                        <Button
-                            variant="contained"
-                            size="large"
-                            startIcon={<GoogleIcon />}
-                            onClick={handleGoogleSignIn}
-                            disabled={signingIn}
-                            sx={{
-                                py: 1.5,
-                                px: 4,
-                                fontSize: '1.1rem',
-                                textTransform: 'none',
-                                borderRadius: 2,
-                            }}
-                        >
-                            {signingIn ? 'Signing in...' : 'Sign in with Google'}
-                        </Button>
-                    </Box>
-
-                    <Box sx={{ mt: 4 }}>
-                        <Typography variant="body2" color="text.secondary">
-                            ✨ Automated task extraction from syllabi
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h1" sx={{ fontSize: '3rem', mb: 1 }}>
+                            🎓
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            🎯 ML-based prioritization
+                        <Typography variant="h4" component="h1" fontWeight={800} color="text.primary">
+                            UniPilot
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            📅 Smart schedule generation
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            🤝 Collaborative project management
+                        <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                            Your AI Academic Companion
                         </Typography>
                     </Box>
+
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        size="large"
+                        startIcon={<GoogleIcon />}
+                        onClick={handleGoogleSignIn}
+                        disabled={signingIn}
+                        sx={{
+                            py: 1.5,
+                            mt: 2,
+                            fontWeight: 600,
+                            boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)',
+                            '&:hover': {
+                                boxShadow: '0 10px 15px -3px rgba(59, 130, 246, 0.6)',
+                            }
+                        }}
+                    >
+                        {signingIn ? 'Signing in...' : 'Continue with Google'}
+                    </Button>
                 </Paper>
             </Container>
         </Box>

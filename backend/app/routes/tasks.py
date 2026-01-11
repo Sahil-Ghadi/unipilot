@@ -370,3 +370,32 @@ async def submit_burnout_rating(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{task_id}/prediction/procrastination")
+async def predict_procrastination(
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Predict procrastination risk for a task based on history and context"""
+    try:
+        # Get task
+        task = firebase_service.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Verify ownership
+        if task['user_id'] != current_user['id']:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Get user history (completed tasks for burnout context)
+        # We fetch completed tasks to see recent burnout ratings
+        history = firebase_service.get_user_tasks(current_user['id'], status='completed')
+        
+        # Calculate risk
+        prediction = ml_service.predict_procrastination_risk(task, history)
+        
+        return prediction
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

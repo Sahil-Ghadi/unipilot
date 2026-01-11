@@ -196,30 +196,62 @@ export default function ProjectDetailPage() {
                     draggable
                     pauseOnHover
                 />
-                <Box maxWidth="xl" sx={{ mx: 'auto' }}>
+                <Box
+                    sx={{
+                        maxWidth: 'xl',
+                        mx: 'auto',
+                        minHeight: '85vh',
+                        background: 'radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                        borderRadius: 4,
+                        p: 1
+                    }}
+                >
                     {/* Header */}
-                    <Box sx={{ mb: 3 }}>
+                    <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Button
                             startIcon={<ArrowBackIcon />}
                             onClick={() => router.push('/projects')}
-                            sx={{ mb: 2 }}
+                            sx={{
+                                alignSelf: 'flex-start',
+                                color: 'text.secondary',
+                                '&:hover': { color: 'primary.main', bgcolor: 'transparent' }
+                            }}
                         >
                             Back to Projects
                         </Button>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+                        <Box sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            flexWrap: 'wrap',
+                            gap: 2
+                        }}>
                             <Box>
-                                <Typography variant="h4" fontWeight={700}>
+                                <Typography variant="h3" fontWeight={800} sx={{
+                                    background: 'linear-gradient(45deg, #1e40af 30%, #3b82f6 90%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    mb: 1
+                                }}>
                                     {project.name}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                    {project.description || 'No description'}
+                                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, lineHeight: 1.6 }}>
+                                    {project.description || 'No description provided for this project.'}
                                 </Typography>
                             </Box>
                             {isOwner && (
                                 <Button
-                                    variant="outlined"
+                                    variant="contained"
                                     startIcon={<PersonAddIcon />}
                                     onClick={() => setAddMemberOpen(true)}
+                                    sx={{
+                                        borderRadius: 2,
+                                        px: 3,
+                                        py: 1,
+                                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                                        background: 'linear-gradient(45deg, #2563eb 30%, #3b82f6 90%)'
+                                    }}
                                 >
                                     Add Member
                                 </Button>
@@ -228,47 +260,99 @@ export default function ProjectDetailPage() {
                     </Box>
 
                     <Grid container spacing={3}>
-                        {/* Left Side - Project Info */}
-                        <Grid item xs={12} md={4}>
-                            <Paper sx={{ p: 3, mb: 3 }}>
-                                <Typography variant="h6" fontWeight={600} gutterBottom>
-                                    Team Members
-                                </Typography>
-                                <AvatarGroup max={10} sx={{ justifyContent: 'flex-start', mb: 2 }}>
+                        {/* Left Side - Info & Tasks */}
+                        <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {/* Team Members Card */}
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    p: 3,
+                                    borderRadius: 3,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    background: 'rgba(255, 255, 255, 0.8)',
+                                    backdropFilter: 'blur(10px)'
+                                }}
+                            >
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Typography variant="h6" fontWeight={700}>
+                                        Team
+                                    </Typography>
+                                    <Chip
+                                        label={`${project.members?.length || 0} Members`}
+                                        size="small"
+                                        sx={{ bgcolor: 'primary.50', color: 'primary.main', fontWeight: 600 }}
+                                    />
+                                </Box>
+
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     {project.members?.map((member, idx) => (
-                                        <Avatar key={idx} sx={{ bgcolor: 'primary.main' }}>
-                                            {member.display_name?.[0] || member.email[0].toUpperCase()}
-                                        </Avatar>
+                                        <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1, borderRadius: 2, '&:hover': { bgcolor: 'grey.50' } }}>
+                                            <Avatar sx={{ bgcolor: member.role === 'owner' ? 'secondary.main' : 'primary.main', width: 40, height: 40, fontSize: '1rem' }}>
+                                                {member.display_name?.[0]?.toUpperCase() || member.email[0]?.toUpperCase()}
+                                            </Avatar>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="subtitle2" fontWeight={600}>
+                                                    {member.display_name || member.email.split('@')[0]}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {member.email}
+                                                </Typography>
+                                            </Box>
+                                            {member.role === 'owner' && (
+                                                <Chip label="Owner" size="small" color="secondary" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                            )}
+                                        </Box>
                                     ))}
-                                </AvatarGroup>
-                                <List dense>
-                                    {project.members?.map((member, idx) => (
-                                        <ListItem key={idx}>
-                                            <ListItemText
-                                                primary={member.display_name || member.email}
-                                                secondary={member.role === 'owner' ? 'Owner' : 'Member'}
-                                            />
-                                        </ListItem>
-                                    ))}
-                                </List>
+                                </Box>
                             </Paper>
 
-                            <Paper sx={{ p: 3 }}>
-                                <ProjectTaskList
-                                    tasks={tasks}
-                                    projectMembers={project.members || []}
-                                    currentUser={user}
-                                    onCreateTask={handleCreateTask}
-                                    onUpdateTask={handleUpdateTask}
-                                    onCompleteTask={handleCompleteTask}
-                                    onDeleteTask={handleDeleteTask}
-                                />
+                            {/* Task List Section */}
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    p: 0,
+                                    borderRadius: 3,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    flex: 1,
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}
+                            >
+                                <Box sx={{ p: 2, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'divider' }}>
+                                    <Typography variant="h6" fontWeight={700}>Project Tasks</Typography>
+                                </Box>
+                                <Box sx={{ p: 2, flex: 1 }}>
+                                    <ProjectTaskList
+                                        tasks={tasks}
+                                        projectMembers={project.members || []}
+                                        currentUser={user}
+                                        onCreateTask={handleCreateTask}
+                                        onUpdateTask={handleUpdateTask}
+                                        onCompleteTask={handleCompleteTask}
+                                        onDeleteTask={handleDeleteTask}
+                                    />
+                                </Box>
                             </Paper>
                         </Grid>
 
                         {/* Right Side - Chat */}
                         <Grid item xs={12} md={8}>
-                            <Box sx={{ height: '70vh' }}>
+                            <Paper
+                                elevation={0}
+                                sx={{
+                                    height: '75vh',
+                                    borderRadius: 3,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05)'
+                                }}
+                            >
                                 <ProjectChat
                                     messages={messages}
                                     isConnected={isConnected}
@@ -279,29 +363,47 @@ export default function ProjectDetailPage() {
                                     currentUser={user}
                                     projectId={projectId}
                                 />
-                            </Box>
+                            </Paper>
                         </Grid>
                     </Grid>
 
                     {/* Add Member Dialog */}
-                    <Dialog open={addMemberOpen} onClose={() => setAddMemberOpen(false)} maxWidth="sm" fullWidth>
-                        <DialogTitle>Add Team Member</DialogTitle>
+                    <Dialog
+                        open={addMemberOpen}
+                        onClose={() => setAddMemberOpen(false)}
+                        maxWidth="sm"
+                        fullWidth
+                        PaperProps={{
+                            sx: { borderRadius: 3 }
+                        }}
+                    >
+                        <DialogTitle sx={{ fontWeight: 700 }}>Add Team Member</DialogTitle>
                         <DialogContent>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Invite a colleague to collaborate on this project. They will be notified via email.
+                            </Typography>
                             <TextField
                                 autoFocus
                                 margin="dense"
-                                label="Member Email"
+                                label="Email Address"
                                 type="email"
                                 fullWidth
+                                variant="outlined"
                                 value={memberEmail}
                                 onChange={(e) => setMemberEmail(e.target.value)}
-                                helperText="Enter the email address of the person you want to add"
+                                sx={{
+                                    '& .MuiOutlinedInput-root': { borderRadius: 2 }
+                                }}
                             />
                         </DialogContent>
-                        <DialogActions>
-                            <Button onClick={() => setAddMemberOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAddMember} variant="contained">
-                                Add Member
+                        <DialogActions sx={{ p: 3 }}>
+                            <Button onClick={() => setAddMemberOpen(false)} sx={{ borderRadius: 2 }}>Cancel</Button>
+                            <Button
+                                onClick={handleAddMember}
+                                variant="contained"
+                                sx={{ borderRadius: 2, px: 3 }}
+                            >
+                                Send Invite
                             </Button>
                         </DialogActions>
                     </Dialog>

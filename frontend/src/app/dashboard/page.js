@@ -12,6 +12,9 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { alpha } from '@mui/material/styles';
 
 export default function DashboardPage() {
     const { user, getIdToken } = useAuth();
@@ -108,54 +111,75 @@ export default function DashboardPage() {
 
                     {/* Stats Cards */}
                     <Grid container spacing={3} sx={{ mt: 2 }}>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Card>
-                                <CardContent>
-                                    <Typography color="text.secondary" gutterBottom>
-                                        Total Tasks
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight={700}>
-                                        {stats.total}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Card sx={{ bgcolor: 'warning.light' }}>
-                                <CardContent>
-                                    <Typography color="text.secondary" gutterBottom>
-                                        Pending
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight={700}>
-                                        {stats.pending}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Card sx={{ bgcolor: 'info.light' }}>
-                                <CardContent>
-                                    <Typography color="text.secondary" gutterBottom>
-                                        In Progress
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight={700}>
-                                        {stats.inProgress}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <Card sx={{ bgcolor: 'success.light' }}>
-                                <CardContent>
-                                    <Typography color="text.secondary" gutterBottom>
-                                        Completed
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight={700}>
-                                        {stats.completed}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
+                        {[
+                            {
+                                label: 'Total Tasks',
+                                value: stats.total,
+                                icon: <AssignmentIcon />,
+                                color: 'primary'
+                            },
+                            {
+                                label: 'Pending',
+                                value: stats.pending,
+                                icon: <HourglassEmptyIcon />,
+                                color: 'warning'
+                            },
+                            {
+                                label: 'In Progress',
+                                value: stats.inProgress,
+                                icon: <TrendingUpIcon />,
+                                color: 'info'
+                            },
+                            {
+                                label: 'Completed',
+                                value: stats.completed,
+                                icon: <CheckCircleIcon />,
+                                color: 'success'
+                            }
+                        ].map((stat, index) => (
+                            <Grid item xs={12} sm={6} md={3} key={index}>
+                                <Card
+                                    elevation={0}
+                                    sx={{
+                                        height: '100%',
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            borderColor: `${stat.color}.main`
+                                        }
+                                    }}
+                                >
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <Box>
+                                                <Typography color="text.secondary" variant="body2" fontWeight={500} gutterBottom>
+                                                    {stat.label}
+                                                </Typography>
+                                                <Typography variant="h4" fontWeight={700} color="text.primary">
+                                                    {stat.value}
+                                                </Typography>
+                                            </Box>
+                                            <Box
+                                                sx={{
+                                                    p: 1.5,
+                                                    borderRadius: 2,
+                                                    bgcolor: (theme) => alpha(theme.palette[stat.color].main, 0.1),
+                                                    color: `${stat.color}.main`,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                {stat.icon}
+                                            </Box>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
                     </Grid>
 
                     {/* Quick Actions */}

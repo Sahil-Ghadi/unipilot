@@ -72,6 +72,7 @@ export const tasksAPI = {
 
     // Burnout rating
     submitBurnoutRating: (id, rating) => api.post(`/api/tasks/${id}/burnout-rating`, null, { params: { rating } }),
+    getProcrastinationPrediction: (id) => api.get(`/api/tasks/${id}/prediction/procrastination`),
 };
 
 // Syllabus API

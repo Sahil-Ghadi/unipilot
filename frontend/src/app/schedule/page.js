@@ -156,9 +156,35 @@ export default function SchedulePage() {
         }
     };
 
-    const renderTimeBlock = (block, index) => {
-        const isBreak = block.type === 'break';
+    const renderTimeBlock = (block, index, isCompact = false) => {
+        const isBreak = block.type === 'break' || block.title.toLowerCase().includes('break');
         const isUnavailable = block.type === 'unavailable';
+
+        let bgColor = 'background.paper';
+        let borderColor = 'primary.main';
+        let icon = '📚';
+        let titleColor = 'text.primary';
+
+        if (isUnavailable) {
+            bgColor = 'grey.50';
+            borderColor = 'grey.300';
+            icon = '😎';
+            titleColor = 'text.secondary';
+        } else if (isBreak) {
+            bgColor = '#F0FDF4'; // green-50
+            borderColor = '#4ADE80'; // green-400
+            icon = '☕';
+            titleColor = '#166534'; // green-800
+        } else {
+            bgColor = '#eff6ff'; // blue-50
+            borderColor = '#60A5FA'; // blue-400
+            titleColor = '#1e40af'; // blue-800
+        }
+
+        // Compact view optimizations
+        const timeWidth = isCompact ? 70 : 90;
+        const paddingY = isCompact && isUnavailable ? 1 : 2;
+        const fontSize = isCompact ? '0.9rem' : '1rem';
 
         return (
             <Box
@@ -166,48 +192,73 @@ export default function SchedulePage() {
                 sx={{
                     display: 'flex',
                     alignItems: 'stretch',
-                    mb: 1,
-                    borderRadius: 1,
-                    overflow: 'hidden',
-                    boxShadow: 1,
-                    opacity: isUnavailable ? 0.7 : 1,
+                    mb: 2,
+                    position: 'relative',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                        transform: 'translateX(4px)',
+                    }
                 }}
             >
+                {/* Time Column */}
                 <Box
                     sx={{
-                        width: 100,
-                        bgcolor: isUnavailable ? 'grey.500' : isBreak ? '#66bb6a' : 'primary.main',
-                        color: 'white',
+                        width: 90,
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        p: 1,
+                        justifyContent: 'flex-start',
+                        alignItems: 'flex-end',
+                        pr: 2,
+                        pt: 2,
+                        position: 'relative',
                     }}
                 >
-                    <Typography variant="caption" fontWeight={600}>
+                    <Typography variant="body2" fontWeight={600} color="text.primary">
                         {formatTime(block.start_time)}
                     </Typography>
-                    <Typography variant="caption">to</Typography>
-                    <Typography variant="caption" fontWeight={600}>
+                    <Typography variant="caption" color="text.secondary">
                         {formatTime(block.end_time)}
                     </Typography>
+
+                    {/* Timeline dot */}
+                    <Box sx={{
+                        position: 'absolute',
+                        right: -6,
+                        top: 24,
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        bgcolor: borderColor,
+                        zIndex: 1
+                    }} />
                 </Box>
+
+                {/* Content Card */}
                 <Box
                     sx={{
                         flex: 1,
-                        bgcolor: isUnavailable ? 'grey.100' : isBreak ? '#e8f5e9' : 'background.paper',
+                        bgcolor: bgColor,
                         p: 2,
-                        borderLeft: 3,
-                        borderColor: isUnavailable ? 'grey.500' : isBreak ? '#66bb6a' : 'primary.main',
+                        borderRadius: 3,
+                        border: '1px solid',
+                        borderColor: isUnavailable ? 'grey.200' : 'transparent',
+                        borderLeft: `4px solid ${borderColor}`,
+                        boxShadow: isUnavailable ? 'none' : '0 2px 4px rgba(0,0,0,0.02)',
                     }}
                 >
-                    <Typography variant="subtitle1" fontWeight={600}>
-                        {isUnavailable ? '🚫 ' : isBreak ? '☕ ' : '📚 '}
-                        {block.title}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ fontSize: '1rem', color: titleColor }}>
+                            {icon} {isUnavailable ? 'User Chilling' : block.title}
+                        </Typography>
+                        {isUnavailable && (
+                            <Typography variant="caption" sx={{ bgcolor: 'grey.200', px: 1, borderRadius: 1, color: 'text.secondary' }}>
+                                Off-Duty
+                            </Typography>
+                        )}
+                    </Box>
+
                     {block.description && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>
                             {block.description}
                         </Typography>
                     )}
@@ -249,34 +300,99 @@ export default function SchedulePage() {
     };
 
     const renderWeeklySchedule = () => (
-        <Grid container spacing={2}>
-            {Object.keys(schedules).sort().map((date) => {
+        <Box sx={{
+            columnCount: { xs: 1, md: 2, lg: 3 },
+            columnGap: 4,
+            p: 1
+        }}>
+            {Object.keys(schedules).sort().map((date, dateIndex) => {
                 const scheduleData = schedules[date];
                 const blocks = scheduleData?.blocks || [];
+                const isToday = date === new Date().toISOString().split('T')[0];
+
                 return (
-                    <Grid item xs={12} md={6} lg={6} key={date}>
-                        <Paper sx={{ p: 2, height: '100%' }}>
-                            <Typography variant="h6" fontWeight={600} gutterBottom>
-                                {format(parseISO(date), 'EEEE')}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-                                {format(parseISO(date), 'MMM d, yyyy')}
-                            </Typography>
-                            <Divider sx={{ my: 1 }} />
-                            {blocks.length > 0 ? (
-                                <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
-                                    {blocks.map((block, index) => renderTimeBlock(block, `${date}-${index}`))}
+                    <Box
+                        key={date}
+                        sx={{
+                            breakInside: 'avoid',
+                            mb: 3,
+                            animation: 'fadeInUp 0.5s ease-out',
+                            animationDelay: `${dateIndex * 0.1}s`,
+                            animationFillMode: 'both',
+                            '@keyframes fadeInUp': {
+                                '0%': { opacity: 0, transform: 'translateY(20px)' },
+                                '100%': { opacity: 1, transform: 'translateY(0)' }
+                            }
+                        }}
+                    >
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                height: '100%',
+                                border: '1px solid',
+                                borderColor: isToday ? 'primary.main' : 'divider',
+                                borderRadius: 4,
+                                overflow: 'hidden',
+                                position: 'relative',
+                                boxShadow: isToday ? '0 8px 24px -4px rgba(59, 130, 246, 0.2)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                                transition: 'transform 0.2s',
+                                '&:hover': {
+                                    transform: 'translateY(-4px)',
+                                    boxShadow: '0 12px 20px -8px rgba(0, 0, 0, 0.1)'
+                                }
+                            }}
+                        >
+                            {/* Date Header */}
+                            <Box sx={{
+                                p: 2.5,
+                                background: isToday
+                                    ? 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)'
+                                    : 'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)',
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <Box>
+                                    <Typography variant="h6" fontWeight={800} color={isToday ? 'primary.main' : 'text.primary'}>
+                                        {format(parseISO(date), 'EEEE')}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                        {format(parseISO(date), 'MMMM d')}
+                                    </Typography>
                                 </Box>
-                            ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-                                    No tasks scheduled
-                                </Typography>
-                            )}
+                                {isToday && (
+                                    <Chip
+                                        label="Today"
+                                        size="small"
+                                        color="primary"
+                                        sx={{ height: 24, fontWeight: 700 }}
+                                    />
+                                )}
+                            </Box>
+
+                            <Box sx={{ p: 2 }}>
+                                {blocks.length > 0 ? (
+                                    <Box>
+                                        {blocks.map((block, index) => renderTimeBlock(block, `${date}-${index}`, true))}
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ py: 4, textAlign: 'center', opacity: 0.6 }}>
+                                        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                                            Unknown territory... 🛸
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            No plan generated yet.
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
                         </Paper>
-                    </Grid>
+                    </Box>
                 );
             })}
-        </Grid>
+        </Box>
     );
 
     const hasSchedules = Object.keys(schedules).length > 0;

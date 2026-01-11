@@ -83,57 +83,87 @@ class MLService:
         
         return sorted_tasks
     
-    def predict_procrastination_risk(self, task: Dict[str, Any], user_history: List[Dict[str, Any]] = None) -> float:
+    def predict_procrastination_risk(self, task: Dict[str, Any], user_history: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Predict procrastination risk for a task (0-1, higher = more risk).
-        Uses simple heuristics for now, can be enhanced with user history.
+        Predict procrastination risk for a task.
+        Returns risk score (0-1), level, and contributing factors.
         """
         deadline = task.get('deadline')
         estimated_effort = task.get('estimated_effort', 2.0)
+        user_history = user_history or []
         
         # Handle None values
         if estimated_effort is None:
             estimated_effort = 2.0
-        
+            
+        days_until_deadline = 30
         if deadline:
             try:
                 if isinstance(deadline, str):
-                    deadline = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+                    deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+                else:
+                    deadline_dt = deadline
                 
-                days_until_deadline = (deadline - datetime.utcnow()).total_seconds() / 86400
+                days_until_deadline = (deadline_dt - datetime.utcnow().replace(tzinfo=deadline_dt.tzinfo)).total_seconds() / 86400
             except:
-                days_until_deadline = 30  # Default
-        else:
-            days_until_deadline = 30  # Default
+                pass # Use default
         
-        # Risk factors
+        # Initialize risk
         risk_score = 0.0
+        factors = []
         
-        # Factor 1: Long deadline = higher procrastination risk
-        if days_until_deadline > 30:
-            risk_score += 0.4
-        elif days_until_deadline > 14:
-            risk_score += 0.2
-        
-        # Factor 2: High effort tasks are often procrastinated
-        if estimated_effort > 10:
+        # --- Factor 1: Deadline Distance (Parkinson's Law) ---
+        if days_until_deadline > 14:
             risk_score += 0.3
-        elif estimated_effort > 5:
-            risk_score += 0.15
+            factors.append("Deadline is far away (Parkinson's Law)")
+        elif days_until_deadline > 7:
+            risk_score += 0.1
         
-        # Factor 3: Low weight tasks are often delayed
-        weight = task.get('weight', 0.0)
-        if weight is None:
-            weight = 0.0
+        # --- Factor 2: Task Complexity ---
+        if estimated_effort > 5:
+            risk_score += 0.25
+            factors.append("High estimated effort requires high activation energy")
+        
+        # --- Factor 3: Task Importance (Value) ---
+        weight = task.get('weight', 0.0) or 0.0
         if weight < 10:
-            risk_score += 0.3
-        elif weight < 20:
             risk_score += 0.15
+            factors.append("Low impact on grade reduces motivation")
+            
+        # --- Factor 4: User Burnout History (The User Context) ---
+        if user_history:
+            # Filter tasks with burnout rating (1=Exhausted, 5=Fresh)
+            rated_tasks = [t for t in user_history if t.get('burnout_rating')]
+            if rated_tasks:
+                # Get last 5 ratings
+                recent_ratings = [t['burnout_rating'] for t in rated_tasks[:5]]
+                avg_burnout = sum(recent_ratings) / len(recent_ratings)
+                
+                if avg_burnout <= 2.5: # Low score = High Burnout
+                    risk_score += 0.35
+                    factors.append("Recent high burnout detected")
+                elif avg_burnout <= 3.5:
+                    risk_score += 0.1
         
-        # Cap at 1.0
-        risk_score = min(1.0, risk_score)
+        # --- Factor 5: Workload (if available in history) ---
+        # estimating from total_time_spent of recent tasks could be a proxy
         
-        return round(risk_score, 2)
+        # Cap risk score
+        risk_score = min(0.95, rounded_score := round(risk_score, 2))
+        
+        # Determine level
+        if risk_score > 0.7:
+            level = "High"
+        elif risk_score > 0.4:
+            level = "Medium"
+        else:
+            level = "Low"
+            
+        return {
+            "score": risk_score,
+            "level": level,
+            "factors": factors
+        }
     
     def get_priority_label(self, priority_score: float) -> str:
         """Convert priority score to label"""
