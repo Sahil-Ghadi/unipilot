@@ -77,6 +77,18 @@ export default function DashboardPage() {
         .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
         .slice(0, 5);
 
+    if (loading) {
+        return (
+            <ProtectedRoute>
+                <Layout>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+                        <LoadingSpinner message="Loading your academic overview..." />
+                    </Box>
+                </Layout>
+            </ProtectedRoute>
+        );
+    }
+
     return (
         <ProtectedRoute>
             <Layout>

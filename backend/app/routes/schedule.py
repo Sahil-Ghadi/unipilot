@@ -58,7 +58,7 @@ async def generate_schedule(
             'work_hours_end': schedule_request.work_hours_end
         }
         
-        created_schedule = firebase_service.create_schedule(
+        created_schedule = firebase_service.save_schedule(
             current_user['id'],
             schedule_data
         )
@@ -119,7 +119,7 @@ async def generate_weekly_schedule(
                 'work_hours_end': request.work_hours_end
             }
             
-            created_schedule = firebase_service.create_schedule(
+            created_schedule = firebase_service.save_schedule(
                 current_user['id'],
                 schedule_data
             )

@@ -301,9 +301,10 @@ export default function SchedulePage() {
 
     const renderWeeklySchedule = () => (
         <Box sx={{
-            columnCount: { xs: 1, md: 2, lg: 3 },
-            columnGap: 4,
-            p: 1
+            position: 'relative',
+            maxWidth: 'md',
+            mx: 'auto',
+            pb: 4 // Padding at bottom for last card
         }}>
             {Object.keys(schedules).sort().map((date, dateIndex) => {
                 const scheduleData = schedules[date];
@@ -314,32 +315,24 @@ export default function SchedulePage() {
                     <Box
                         key={date}
                         sx={{
-                            breakInside: 'avoid',
-                            mb: 3,
-                            animation: 'fadeInUp 0.5s ease-out',
-                            animationDelay: `${dateIndex * 0.1}s`,
-                            animationFillMode: 'both',
-                            '@keyframes fadeInUp': {
-                                '0%': { opacity: 0, transform: 'translateY(20px)' },
-                                '100%': { opacity: 1, transform: 'translateY(0)' }
-                            }
+                            position: 'sticky',
+                            top: 100 + (dateIndex * 10), // Stagger sticky top slightly for "pile" effect
+                            mb: 4, // Space between cards in normal flow
+                            zIndex: dateIndex + 1,
+                            transition: 'transform 0.3s ease',
                         }}
                     >
                         <Paper
-                            elevation={0}
+                            elevation={isToday ? 4 : 1}
                             sx={{
-                                height: '100%',
                                 border: '1px solid',
                                 borderColor: isToday ? 'primary.main' : 'divider',
                                 borderRadius: 4,
                                 overflow: 'hidden',
-                                position: 'relative',
-                                boxShadow: isToday ? '0 8px 24px -4px rgba(59, 130, 246, 0.2)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                                transition: 'transform 0.2s',
-                                '&:hover': {
-                                    transform: 'translateY(-4px)',
-                                    boxShadow: '0 12px 20px -8px rgba(0, 0, 0, 0.1)'
-                                }
+                                boxShadow: isToday
+                                    ? '0 8px 32px rgba(59, 130, 246, 0.25)'
+                                    : '0 4px 12px rgba(0,0,0,0.05)',
+                                bgcolor: 'background.paper',
                             }}
                         >
                             {/* Date Header */}
@@ -352,7 +345,8 @@ export default function SchedulePage() {
                                 borderColor: 'divider',
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                cursor: 'pointer', // Suggest interactivity
                             }}>
                                 <Box>
                                     <Typography variant="h6" fontWeight={800} color={isToday ? 'primary.main' : 'text.primary'}>
@@ -372,7 +366,7 @@ export default function SchedulePage() {
                                 )}
                             </Box>
 
-                            <Box sx={{ p: 2 }}>
+                            <Box sx={{ p: 2, maxHeight: '60vh', overflowY: 'auto' }}>
                                 {blocks.length > 0 ? (
                                     <Box>
                                         {blocks.map((block, index) => renderTimeBlock(block, `${date}-${index}`, true))}

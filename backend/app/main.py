@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
-from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications
+from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph
 import socketio
 import time
 import traceback
@@ -75,12 +75,13 @@ async def startup_event():
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(projects.router)
 app.include_router(tasks.router)
-app.include_router(syllabus.router)
 app.include_router(schedule.router)
 app.include_router(calendar.router)
-app.include_router(projects.router)
 app.include_router(notifications.router)
+app.include_router(syllabus.router)
+app.include_router(graph.router)
 
 
 @app.get("/")

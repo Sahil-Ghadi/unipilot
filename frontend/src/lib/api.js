@@ -128,6 +128,11 @@ export const notificationsAPI = {
     deleteNotification: (notificationId) => api.delete(`/api/notifications/${notificationId}`),
 };
 
+// Graph endpoints
+export const graphAPI = {
+    getData: () => api.get('/api/graph/data'),
+};
+
 export default api;
 
 // Project Task endpoints

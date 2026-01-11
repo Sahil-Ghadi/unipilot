@@ -1,8 +1,10 @@
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import json
+from app.config.settings import settings
 
 class FirebaseService:
     """Service for Firebase operations"""
@@ -10,8 +12,41 @@ class FirebaseService:
     def __init__(self, credentials_path: str):
         """Initialize Firebase Admin SDK"""
         if not firebase_admin._apps:
-            cred = credentials.Certificate(credentials_path)
-            firebase_admin.initialize_app(cred)
+            # 1. Try environment variable (configured in settings)
+            if settings.firebase_admin_key:
+                print(f"🔍 Found FIREBASE_ADMIN_KEY in settings (Length: {len(settings.firebase_admin_key)})")
+                try:
+                    # Parse JSON string
+                    cred_dict = json.loads(settings.firebase_admin_key)
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                    print("✅ Initialized Firebase using FIREBASE_ADMIN_KEY from settings")
+                except Exception as e:
+                    print(f"❌ Failed to parse FIREBASE_ADMIN_KEY: {e}")
+            else:
+                print("ℹ️ FIREBASE_ADMIN_KEY not found in settings")
+                    
+            # 2. Fallback to file path if not initialized yet
+            if not firebase_admin._apps:
+                abs_path = os.path.abspath(credentials_path)
+                print(f"🔍 Checking fallback file at: {abs_path}")
+                print(f"   Current Working Directory: {os.getcwd()}")
+                
+                if os.path.exists(credentials_path):
+                    try:
+                        cred = credentials.Certificate(credentials_path)
+                        firebase_admin.initialize_app(cred)
+                        print(f"✅ Initialized Firebase using file: {credentials_path}")
+                    except Exception as e:
+                        print(f"❌ Failed to load credentials file: {e}")
+                else:
+                    print(f"❌ File not found at: {credentials_path}")
+
+            # 3. Final check
+            if not firebase_admin._apps:
+                raise ValueError(
+                    f"CRITICAL: Firebase init failed. Env var invalid/missing AND file missing at {os.path.abspath(credentials_path)}"
+                )
         
         self.db = firestore.client()
     
@@ -180,18 +215,64 @@ class FirebaseService:
         return {'id': schedule_ref.id, **schedule_data}
     
     def get_user_schedule(self, user_id: str, date: datetime) -> Optional[Dict[str, Any]]:
-        """Get schedule for a specific date"""
-        # Query for schedules on the given date
-        query = self.db.collection('schedules').where('user_id', '==', user_id)
-        docs = query.stream()
+        """Get schedule for a specific date using Python-side filtering (avoids missing index)"""
+        try:
+            # Query for all schedules for this user (inefficient but safe without indices)
+            query = self.db.collection('schedules').where('user_id', '==', user_id)
+            docs = query.stream()
+            
+            target_date = date.date()
+            
+            for doc in docs:
+                data = doc.to_dict()
+                stored_date = data.get('date')
+                
+                # Handle Firestore datetime object
+                if hasattr(stored_date, 'date'):
+                    if stored_date.date() == target_date:
+                        return {'id': doc.id, **data}
+                # Handle string date (fallback)
+                elif isinstance(stored_date, str):
+                    try:
+                        if datetime.fromisoformat(stored_date).date() == target_date:
+                            return {'id': doc.id, **data}
+                    except:
+                        pass
+                        
+            return None
+        except Exception as e:
+            print(f"Error getting schedule: {e}")
+            return None
+
+    def save_schedule(self, user_id: str, schedule_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Save or update a schedule for a specific date (Upsert)"""
+        # Check if schedule exists for this date
+        target_date = schedule_data['date']
         
-        for doc in docs:
-            schedule_data = doc.to_dict()
-            schedule_date = schedule_data.get('date')
-            if schedule_date and schedule_date.date() == date.date():
-                return {'id': doc.id, **schedule_data}
+        # Ensure target_date is datetime
+        if isinstance(target_date, str):
+            try:
+                target_date = datetime.fromisoformat(target_date)
+            except:
+                pass
+                
+        existing_schedule = self.get_user_schedule(user_id, target_date)
         
-        return None
+        schedule_data['user_id'] = user_id
+        schedule_data['generated_at'] = datetime.utcnow()
+        
+        if existing_schedule:
+            # Update existing
+            print(f"🔄 Updating existing schedule for {target_date} (ID: {existing_schedule['id']})")
+            schedule_ref = self.db.collection('schedules').document(existing_schedule['id'])
+            schedule_ref.set(schedule_data)
+            return {'id': existing_schedule['id'], **schedule_data}
+        else:
+            # Create new
+            print(f"✨ Creating new schedule for {target_date}")
+            schedule_ref = self.db.collection('schedules').document()
+            schedule_ref.set(schedule_data)
+            return {'id': schedule_ref.id, **schedule_data}
     
     # Verify Firebase ID token
     def verify_token(self, id_token: str) -> Dict[str, Any]:

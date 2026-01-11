@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     
     # Firebase
     firebase_credentials_path: str = "./app/serviceAccountKey.json"
+    firebase_admin_key: Optional[str] = None
     
     # Google Calendar API
     google_calendar_client_id: Optional[str] = None
