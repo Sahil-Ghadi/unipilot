@@ -10,7 +10,10 @@ firebase_service = FirebaseService(settings.firebase_credentials_path)
 # Create Socket.IO server
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',
+    cors_allowed_origins=[
+        "https://unipilottt.vercel.app",
+        "http://localhost:3000"
+    ],
     logger=True,
     engineio_logger=True,
     ping_timeout=60,
