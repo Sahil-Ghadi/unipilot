@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
 from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications
 import socketio
+import os
 
 # Import Socket.IO server
 from app.websocket.chat import sio
@@ -17,11 +18,11 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]  # Expose all response headers
+    expose_headers=["*"]
 )
 
 # Include routers
@@ -55,18 +56,16 @@ socket_app = socketio.ASGIApp(
     other_asgi_app=app
 )
 
+asgi_app = socket_app
+
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting UniPilot API with WebSocket support...")
-    print("📡 Socket.IO endpoint: http://localhost:8000/socket.io/")
-    print("📚 API docs: http://localhost:8000/docs")
+    # Read PORT from environment variable, fallback to 8000 for local development
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
-        socket_app,  # Run the combined app directly
-        host=settings.host,
-        port=settings.port,
-        reload=False,  # Disable reload for now to test
+        "app.main:asgi_app",
+        host="0.0.0.0",
+        port=port,   
+        reload=False,
         log_level="info"
     )
-
-# Force reload
-
