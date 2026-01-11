@@ -18,6 +18,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [stats, setStats] = useState({
         total: 0,
         pending: 0,
@@ -33,10 +34,18 @@ export default function DashboardPage() {
 
     const loadTasks = async () => {
         try {
+            setError(null);
+            console.log('🔄 Loading tasks for user:', user?.email);
+
             const token = await getIdToken();
+            console.log('🔑 Got auth token, length:', token?.length);
+
             setAuthToken(token);
 
+            console.log('📡 Making API request to /api/tasks');
             const response = await tasksAPI.getTasks();
+            console.log('✅ API response received:', response.data);
+
             const allTasks = response.data;
 
             setTasks(allTasks);
@@ -47,7 +56,14 @@ export default function DashboardPage() {
                 completed: allTasks.filter(t => t.status === 'completed').length,
             });
         } catch (error) {
-            console.error('Error loading tasks:', error);
+            console.error('❌ Error loading tasks:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                stack: error.stack
+            });
+            setError(error.response?.data?.detail || error.message || 'Failed to load tasks. Please check console for details.');
         } finally {
             setLoading(false);
         }
@@ -69,147 +85,162 @@ export default function DashboardPage() {
                         Here's your academic overview
                     </Typography>
 
-                    {loading ? (
-                        <LoadingSpinner />
-                    ) : (
-                        <>
-                            {/* Stats Cards */}
-                            <Grid container spacing={3} sx={{ mt: 2 }}>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <Card>
-                                        <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
-                                                Total Tasks
-                                            </Typography>
-                                            <Typography variant="h4" fontWeight={700}>
-                                                {stats.total}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <Card sx={{ bgcolor: 'warning.light' }}>
-                                        <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
-                                                Pending
-                                            </Typography>
-                                            <Typography variant="h4" fontWeight={700}>
-                                                {stats.pending}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <Card sx={{ bgcolor: 'info.light' }}>
-                                        <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
-                                                In Progress
-                                            </Typography>
-                                            <Typography variant="h4" fontWeight={700}>
-                                                {stats.inProgress}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <Card sx={{ bgcolor: 'success.light' }}>
-                                        <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
-                                                Completed
-                                            </Typography>
-                                            <Typography variant="h4" fontWeight={700}>
-                                                {stats.completed}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            </Grid>
-
-                            {/* Quick Actions */}
-                            <Paper sx={{ p: 3, mt: 4 }}>
-                                <Typography variant="h6" gutterBottom fontWeight={600}>
-                                    Quick Actions
-                                </Typography>
-                                <Grid container spacing={2} sx={{ mt: 1 }}>
-                                    <Grid item xs={12} sm={4}>
-                                        <Button
-                                            variant="contained"
-                                            fullWidth
-                                            startIcon={<UploadFileIcon />}
-                                            onClick={() => router.push('/upload')}
-                                            sx={{ py: 1.5 }}
-                                        >
-                                            Upload Syllabus
-                                        </Button>
-                                    </Grid>
-                                    <Grid item xs={12} sm={4}>
-                                        <Button
-                                            variant="outlined"
-                                            fullWidth
-                                            startIcon={<AssignmentIcon />}
-                                            onClick={() => router.push('/tasks')}
-                                            sx={{ py: 1.5 }}
-                                        >
-                                            View All Tasks
-                                        </Button>
-                                    </Grid>
-                                    <Grid item xs={12} sm={4}>
-                                        <Button
-                                            variant="outlined"
-                                            fullWidth
-                                            startIcon={<CalendarMonthIcon />}
-                                            onClick={() => router.push('/schedule')}
-                                            sx={{ py: 1.5 }}
-                                        >
-                                            Generate Schedule
-                                        </Button>
-                                    </Grid>
-                                </Grid>
-                            </Paper>
-
-                            {/* Upcoming Tasks */}
-                            <Paper sx={{ p: 3, mt: 4 }}>
-                                <Typography variant="h6" gutterBottom fontWeight={600}>
-                                    Upcoming Deadlines
-                                </Typography>
-                                {upcomingTasks.length === 0 ? (
-                                    <Typography color="text.secondary" sx={{ mt: 2 }}>
-                                        No upcoming tasks. You're all caught up! 🎉
-                                    </Typography>
-                                ) : (
-                                    <Box sx={{ mt: 2 }}>
-                                        {upcomingTasks.map((task) => (
-                                            <Box
-                                                key={task.id}
-                                                sx={{
-                                                    p: 2,
-                                                    mb: 1,
-                                                    border: '1px solid',
-                                                    borderColor: 'divider',
-                                                    borderRadius: 1,
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center',
-                                                }}
-                                            >
-                                                <Box>
-                                                    <Typography variant="subtitle1" fontWeight={600}>
-                                                        {task.title}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {task.course}
-                                                    </Typography>
-                                                </Box>
-                                                <Typography variant="body2" color="error">
-                                                    {new Date(task.deadline).toLocaleDateString()}
-                                                </Typography>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                )}
-                            </Paper>
-                        </>
+                    {error && (
+                        <Paper sx={{ p: 3, mt: 2, bgcolor: 'error.light', color: 'error.contrastText' }}>
+                            <Typography variant="h6" gutterBottom>
+                                ⚠️ Error Loading Dashboard
+                            </Typography>
+                            <Typography variant="body2">
+                                {error}
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                                Please check the browser console (F12) for more details.
+                            </Typography>
+                            <Button
+                                variant="contained"
+                                onClick={loadTasks}
+                                sx={{ mt: 2 }}
+                            >
+                                Retry
+                            </Button>
+                        </Paper>
                     )}
+
+                    {/* Stats Cards */}
+                    <Grid container spacing={3} sx={{ mt: 2 }}>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="text.secondary" gutterBottom>
+                                        Total Tasks
+                                    </Typography>
+                                    <Typography variant="h4" fontWeight={700}>
+                                        {stats.total}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Card sx={{ bgcolor: 'warning.light' }}>
+                                <CardContent>
+                                    <Typography color="text.secondary" gutterBottom>
+                                        Pending
+                                    </Typography>
+                                    <Typography variant="h4" fontWeight={700}>
+                                        {stats.pending}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Card sx={{ bgcolor: 'info.light' }}>
+                                <CardContent>
+                                    <Typography color="text.secondary" gutterBottom>
+                                        In Progress
+                                    </Typography>
+                                    <Typography variant="h4" fontWeight={700}>
+                                        {stats.inProgress}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <Card sx={{ bgcolor: 'success.light' }}>
+                                <CardContent>
+                                    <Typography color="text.secondary" gutterBottom>
+                                        Completed
+                                    </Typography>
+                                    <Typography variant="h4" fontWeight={700}>
+                                        {stats.completed}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    {/* Quick Actions */}
+                    <Paper sx={{ p: 3, mt: 4 }}>
+                        <Typography variant="h6" gutterBottom fontWeight={600}>
+                            Quick Actions
+                        </Typography>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                            <Grid item xs={12} sm={4}>
+                                <Button
+                                    variant="contained"
+                                    fullWidth
+                                    startIcon={<UploadFileIcon />}
+                                    onClick={() => router.push('/upload')}
+                                    sx={{ py: 1.5 }}
+                                >
+                                    Upload Syllabus
+                                </Button>
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    startIcon={<AssignmentIcon />}
+                                    onClick={() => router.push('/tasks')}
+                                    sx={{ py: 1.5 }}
+                                >
+                                    View All Tasks
+                                </Button>
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    startIcon={<CalendarMonthIcon />}
+                                    onClick={() => router.push('/schedule')}
+                                    sx={{ py: 1.5 }}
+                                >
+                                    Generate Schedule
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* Upcoming Tasks */}
+                    <Paper sx={{ p: 3, mt: 4 }}>
+                        <Typography variant="h6" gutterBottom fontWeight={600}>
+                            Upcoming Deadlines
+                        </Typography>
+                        {upcomingTasks.length === 0 ? (
+                            <Typography color="text.secondary" sx={{ mt: 2 }}>
+                                No upcoming tasks. You're all caught up! 🎉
+                            </Typography>
+                        ) : (
+                            <Box sx={{ mt: 2 }}>
+                                {upcomingTasks.map((task) => (
+                                    <Box
+                                        key={task.id}
+                                        sx={{
+                                            p: 2,
+                                            mb: 1,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            borderRadius: 1,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <Box>
+                                            <Typography variant="subtitle1" fontWeight={600}>
+                                                {task.title}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {task.course}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="body2" color="error">
+                                            {new Date(task.deadline).toLocaleDateString()}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        )}
+                    </Paper>
                 </Container>
             </Layout>
         </ProtectedRoute>

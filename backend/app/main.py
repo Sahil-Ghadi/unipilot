@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
 from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications
 import socketio
+import time
+import traceback
 
 # Import Socket.IO server
 from app.websocket.chat import sio
@@ -23,6 +25,53 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]  # Expose all response headers
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all requests and responses for debugging"""
+    start_time = time.time()
+    
+    print(f"\n{'='*60}")
+    print(f"📥 Incoming Request: {request.method} {request.url.path}")
+    print(f"Headers: {dict(request.headers)}")
+    
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        print(f"✅ Response Status: {response.status_code}")
+        print(f"⏱️  Process Time: {process_time:.2f}s")
+        print(f"{'='*60}\n")
+        return response
+    except Exception as e:
+        process_time = time.time() - start_time
+        print(f"❌ Request Failed: {str(e)}")
+        print(f"⏱️  Process Time: {process_time:.2f}s")
+        print(f"Stack Trace:\n{traceback.format_exc()}")
+        print(f"{'='*60}\n")
+        raise
+
+# Startup event to verify Firebase initialization
+@app.on_event("startup")
+async def startup_event():
+    """Verify Firebase and other services on startup"""
+    print("\n" + "="*60)
+    print("🚀 Starting UniPilot API...")
+    print("="*60)
+    
+    # Test Firebase initialization
+    try:
+        from app.services.firebase_service import FirebaseService
+        firebase_service = FirebaseService(settings.firebase_credentials_path)
+        print("✅ Firebase Admin SDK initialized successfully")
+        print("✅ Firestore client ready")
+    except Exception as e:
+        print(f"❌ Firebase initialization failed: {str(e)}")
+        print(f"Stack trace:\n{traceback.format_exc()}")
+        print("⚠️  API will start but authentication will fail!")
+    
+    print("✅ Server is ready to accept requests")
+    print("="*60 + "\n")
 
 # Include routers
 app.include_router(auth.router)

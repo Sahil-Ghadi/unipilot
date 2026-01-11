@@ -14,7 +14,7 @@ __pycache__/
 .Python
 
 # Firebase
-# serviceAccountKey.json
+serviceAccountKey.json
 
 # IDE
 .vscode/

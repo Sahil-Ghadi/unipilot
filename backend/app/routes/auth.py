@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Optional
 from app.services.firebase_service import FirebaseService
 from app.config.settings import settings
+import asyncio
+from concurrent.futures import TimeoutError
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -26,18 +28,36 @@ async def get_current_user(authorization: str = Header(None, alias="Authorizatio
         token = authorization.split("Bearer ")[1]
         print(f"DEBUG: Token extracted, length: {len(token)}")
         
-        # Verify token
+        # Verify token with timeout
         try:
-            decoded_token = firebase_service.verify_token(token)
+            print("DEBUG: Starting token verification...")
+            # Wrap synchronous Firebase call in async with timeout
+            loop = asyncio.get_event_loop()
+            decoded_token = await asyncio.wait_for(
+                loop.run_in_executor(None, firebase_service.verify_token, token),
+                timeout=10.0  # 10 second timeout
+            )
             print(f"DEBUG: Token verified successfully for user: {decoded_token.get('uid')}")
+        except asyncio.TimeoutError:
+            print("ERROR: Token verification timed out after 10 seconds")
+            raise HTTPException(status_code=408, detail="Token verification timed out. Please try again.")
         except Exception as token_error:
             print(f"ERROR: Token verification failed: {str(token_error)}")
             raise HTTPException(status_code=401, detail=f"Invalid or expired token: {str(token_error)}")
         
         user_id = decoded_token.get('uid')
         
-        # Get or create user in Firestore
-        user = firebase_service.get_user(user_id)
+        # Get or create user in Firestore with timeout
+        try:
+            print(f"DEBUG: Fetching user from Firestore: {user_id}")
+            loop = asyncio.get_event_loop()
+            user = await asyncio.wait_for(
+                loop.run_in_executor(None, firebase_service.get_user, user_id),
+                timeout=5.0  # 5 second timeout
+            )
+        except asyncio.TimeoutError:
+            print("ERROR: Firestore user fetch timed out")
+            raise HTTPException(status_code=408, detail="Database query timed out. Please try again.")
         
         if not user:
             # Create user if doesn't exist
@@ -52,7 +72,15 @@ async def get_current_user(authorization: str = Header(None, alias="Authorizatio
                     'pomodoro_enabled': True
                 }
             }
-            user = firebase_service.create_user(user_id, user_data)
+            try:
+                loop = asyncio.get_event_loop()
+                user = await asyncio.wait_for(
+                    loop.run_in_executor(None, firebase_service.create_user, user_id, user_data),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                print("ERROR: User creation timed out")
+                raise HTTPException(status_code=408, detail="User creation timed out. Please try again.")
         
         print(f"DEBUG: User authenticated successfully: {user.get('email')}")
         return user
