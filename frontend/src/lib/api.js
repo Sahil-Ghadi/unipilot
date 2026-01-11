@@ -64,14 +64,6 @@ export const tasksAPI = {
     updateTask: (id, taskData) => api.put(`/api/tasks/${id}`, taskData),
     deleteTask: (id) => api.delete(`/api/tasks/${id}`),
     prioritizeTasks: () => api.post('/api/tasks/prioritize'),
-    getResources: (id) => api.get(`/api/tasks/${id}/resources`),
-
-    // Timer endpoints
-    startTimer: (id) => api.post(`/api/tasks/${id}/timer/start`),
-    pauseTimer: (id) => api.post(`/api/tasks/${id}/timer/pause`),
-
-    // Burnout rating
-    submitBurnoutRating: (id, rating) => api.post(`/api/tasks/${id}/burnout-rating`, null, { params: { rating } }),
 };
 
 // Syllabus API
