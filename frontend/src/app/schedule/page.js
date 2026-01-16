@@ -135,9 +135,7 @@ export default function SchedulePage() {
             const token = await getIdToken();
             setAuthToken(token);
 
-            await calendarAPI.syncToCalendar({
-                schedule_date: new Date().toISOString(),
-            });
+            await calendarAPI.syncAll();
 
             alert('Successfully synced to Google Calendar!');
         } catch (error) {
