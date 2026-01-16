@@ -70,7 +70,7 @@ export default function Home() {
           <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
             <Stack direction="row" alignItems="center" spacing={1}>
               <Typography variant="h5" component="div" fontWeight="800" color="primary">
-                🎓 UniPilot
+                UniPilot
               </Typography>
             </Stack>
             <Button variant="outlined" color="primary" onClick={() => router.push('/login')} sx={{ borderRadius: 2 }}>
@@ -99,13 +99,13 @@ export default function Home() {
               fontWeight: 600,
               display: 'inline-block'
             }}>
-              ✨ AI-Powered Academic Assistant
+               
             </Box>
-            <Typography variant="h2" component="h1" fontWeight="800" sx={{ background: '-webkit-linear-gradient(45deg, #111827 30%, #3B82F6 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.2 }}>
+            <Typography variant="h2" component="h1" fontWeight="800" sx={{ background: '-webkit-linear-gradient(45deg, #111827 5%, #3B82F6 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.2 }}>
               Master Your Academic<br />Journey with Auto-Pilot
             </Typography>
             <Typography variant="h6" color="text.secondary" sx={{ maxWidth: '600px', fontWeight: 400 }}>
-              Stop juggling generic to-do lists. UniPilot parses your syllabus, manages your deadlines, and syncs with your life—so you can focus on learning.
+              Stop juggling generic todo lists. UniPilot parses your syllabus, manages your deadlines, and syncs with your life so you can focus on learning.
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} pt={2}>
               <Button
@@ -183,11 +183,21 @@ export default function Home() {
               © {new Date().getFullYear()} UniPilot. All rights reserved.
             </Typography>
             <Stack direction="row" spacing={3}>
-              <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}>
-                Privacy
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                onClick={() => router.push('/privacy-policy')}
+              >
+                Privacy Policy
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}>
-                Terms
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                onClick={() => router.push('/terms')}
+              >
+                Terms of Service
               </Typography>
             </Stack>
           </Stack>

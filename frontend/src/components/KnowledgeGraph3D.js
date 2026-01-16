@@ -10,7 +10,7 @@ const ForceGraph3D = dynamic(() => import('react-force-graph-3d'), {
     loading: () => <div style={{ color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>Loading 3D Engine...</div>
 });
 
-const KnowledgeGraph3D = ({ data, onNodeClick }) => {
+const KnowledgeGraph3D = ({ data, onNodeClick, width, height }) => {
     const fgRef = useRef();
     const theme = useTheme();
 
@@ -55,6 +55,8 @@ const KnowledgeGraph3D = ({ data, onNodeClick }) => {
 
     return (
         <ForceGraph3D
+            width={width}
+            height={height}
             ref={fgRef}
             graphData={data}
             nodeLabel="name"

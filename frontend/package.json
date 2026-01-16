@@ -13,9 +13,13 @@
     "@mui/icons-material": "^6.3.1",
     "@mui/material": "^6.3.1",
     "@mui/x-date-pickers": "^7.24.0",
+    "@tabler/icons-react": "^3.36.1",
     "axios": "^1.7.9",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^11.1.0",
+    "framer-motion": "^12.26.2",
+    "mini-svg-data-uri": "^1.4.4",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -26,6 +30,7 @@
     "recharts": "^2.15.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.4.0",
     "three": "^0.182.0"
   },
   "devDependencies": {

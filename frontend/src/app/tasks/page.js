@@ -23,7 +23,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import TaskCard from '@/components/TaskCard';
 import BurnoutDialog from '@/components/BurnoutDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { tasksAPI, setAuthToken } from '@/lib/api';
+import { tasksAPI, setAuthToken, graphAPI } from '@/lib/api';
+import KnowledgeGraph3D from '@/components/KnowledgeGraph3D';
+import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { ToastContainer, toast } from 'react-toastify';
@@ -38,7 +40,10 @@ export default function TasksPage() {
     const [editingTask, setEditingTask] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [burnoutDialogOpen, setBurnoutDialogOpen] = useState(false);
+
     const [completedTaskForRating, setCompletedTaskForRating] = useState(null);
+    const [showGraph, setShowGraph] = useState(false);
+    const [graphData, setGraphData] = useState({ nodes: [], links: [] });
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -57,6 +62,24 @@ export default function TasksPage() {
     useEffect(() => {
         applyFilters();
     }, [tasks, filterStatus]);
+
+    useEffect(() => {
+        if (showGraph && user) {
+            loadGraphData();
+        }
+    }, [showGraph, user]);
+
+    const loadGraphData = async () => {
+        try {
+            const token = await getIdToken();
+            setAuthToken(token);
+            const response = await graphAPI.getData();
+            setGraphData(response.data);
+        } catch (error) {
+            console.error("Failed to load graph data:", error);
+            toast.error("Failed to load Knowledge Graph");
+        }
+    };
 
     const loadTasks = async () => {
         try {
@@ -278,17 +301,55 @@ export default function TasksPage() {
                 />
                 <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+
                         <Typography variant="h4" fontWeight={700}>
                             My Tasks
                         </Typography>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={() => handleOpenDialog()}
-                        >
-                            Add Task
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button
+                                variant={showGraph ? "contained" : "outlined"}
+                                startIcon={<AutoGraphIcon />}
+                                onClick={() => setShowGraph(!showGraph)}
+                                color="secondary"
+                            >
+                                {showGraph ? "Hide Graph" : "View Graph"}
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<AddIcon />}
+                                onClick={() => handleOpenDialog()}
+                            >
+                                Add Task
+                            </Button>
+                        </Box>
                     </Box>
+
+                    {showGraph && (
+                        <Box sx={{
+                            mb: 4,
+                            height: 500,
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            bgcolor: '#0f172a',
+                            border: '1px solid',
+                            borderColor: 'divider'
+                        }}>
+                            <KnowledgeGraph3D
+                                data={graphData}
+                                // Dynamic resizing can be tricky with ForceGraph, 
+                                // but we can let it auto-size to container if width/height not fully strict,
+                                // or pass container dims. For now, let's try auto-size by *not* passing specific width if the lib supports responsive, 
+                                // OR pass explicit dimensions if we attach a ref to Box.
+                                // Actually, react-force-graph-3d constructs canvas.
+                                // Let's try passing undefined to let it take full window, OR 
+                                // passing specific height.
+                                height={500}
+                            // width will default to window width if not passed, which might be too wide.
+                            // It creates a canvas.
+                            />
+                        </Box>
+                    )}
 
                     {/* Filters */}
                     <Box sx={{ mb: 3, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
