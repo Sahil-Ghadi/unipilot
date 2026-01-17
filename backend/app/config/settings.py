@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     google_calendar_client_id: Optional[str] = None
     google_calendar_client_secret: Optional[str] = None
     google_calendar_redirect_uri: str = "http://localhost:8000/api/calendar/callback"
+
+    # Google Classroom API
+    google_classroom_client_id: Optional[str] = None
+    google_classroom_client_secret: Optional[str] = None
+    google_classroom_redirect_uri: str = "http://localhost:8000/api/classroom/callback"
     
     # Cloudinary
     cloudinary_cloud_name: Optional[str] = None

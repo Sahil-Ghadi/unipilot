@@ -448,6 +448,47 @@ class FirebaseService:
         except Exception as e:
             print(f"Error deleting tokens: {e}")
             return False
+
+    # Google Classroom token operations
+    def store_google_classroom_tokens(self, user_id: str, tokens: Dict[str, Any]) -> bool:
+        """Store Google Classroom OAuth tokens for a user"""
+        try:
+            self.db.collection('users').document(user_id).set({
+                'google_classroom': {
+                    'access_token': tokens['access_token'],
+                    'refresh_token': tokens.get('refresh_token'),
+                    'token_expiry': tokens.get('token_expiry'),
+                    'connected_at': datetime.utcnow(),
+                    'scopes': tokens.get('scopes')
+                }
+            }, merge=True)
+            return True
+        except Exception as e:
+            print(f"Error storing tokens: {e}")
+            return False
+
+    def get_google_classroom_tokens(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get Google Classroom OAuth tokens for a user"""
+        try:
+            doc = self.db.collection('users').document(user_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                return data.get('google_classroom')
+            return None
+        except Exception as e:
+            print(f"Error getting tokens: {e}")
+            return None
+
+    def delete_google_classroom_tokens(self, user_id: str) -> bool:
+        """Delete Google Classroom OAuth tokens for a user"""
+        try:
+            self.db.collection('users').document(user_id).update({
+                'google_classroom': firestore.DELETE_FIELD
+            })
+            return True
+        except Exception as e:
+            print(f"Error deleting tokens: {e}")
+            return False
     
     def update_task_calendar_id(self, task_id: str, calendar_event_id: str) -> bool:
         """Store Google Calendar event ID with task"""
