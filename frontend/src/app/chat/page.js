@@ -645,7 +645,7 @@ export default function ChatPage() {
 
       <Dialog open={indexDialogOpen} onClose={() => setIndexDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" fontWeight="600">📄 Add Document</Typography>
+          <Typography variant="subtitle1" fontWeight="600" component="div">📄 Add Document</Typography>
           <Typography variant="caption" color="text.secondary">Index a PDF from URL to make it searchable</Typography>
         </DialogTitle>
         <DialogContent>
@@ -688,7 +688,7 @@ export default function ChatPage() {
         PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" fontWeight="600" component="div">📚 Select Materials to Sync</Typography>
+          <Typography variant="subtitle1" fontWeight="600" component="div">📚 Select Materials to Sync</Typography>
           <Typography variant="caption" color="text.secondary" display="block">
             Choose documents from your Google Classroom to sync
           </Typography>
