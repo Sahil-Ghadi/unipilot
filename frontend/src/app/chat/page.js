@@ -423,7 +423,14 @@ export default function ChatPage() {
         </Paper>
 
         <Box flex={1}>
-          <Paper sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+          <Paper sx={{
+            height: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: 3,
+            overflow: 'hidden',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+          }}>
             <Box sx={{
               p: 3,
               borderBottom: 1,
@@ -440,7 +447,12 @@ export default function ChatPage() {
               </Typography>
             </Box>
 
-            <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+            <Box sx={{
+              flex: 1,
+              overflow: 'auto',
+              p: 3,
+              background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
+            }}>
               {messages.map((msg, idx) => (
                 <Box
                   key={idx}
