@@ -374,31 +374,45 @@ export default function ChatPage() {
             </Box>
           )}
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 3 }} />
           <Box mb={2}>
-            <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1}>
-              <SchoolIcon fontSize="small" />
+            <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1} fontWeight="600" mb={2}>
+              <SchoolIcon fontSize="small" color="primary" />
               Google Classroom
             </Typography>
-            <Box display="flex" gap={1}>
+            <Box display="flex" flexDirection="column" gap={1}>
               <Button
                 variant={classroomConnected ? 'outlined' : 'contained'}
-                size="small"
+                size="medium"
                 onClick={connectClassroom}
                 disabled={classroomLoading}
                 fullWidth
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                }}
               >
-                {classroomConnected ? 'Connected' : 'Connect'}
+                {classroomConnected ? '✓ Connected' : 'Connect'}
               </Button>
               <Button
                 variant="contained"
-                size="small"
+                size="medium"
                 onClick={syncClassroomMaterials}
                 disabled={!classroomConnected || classroomSyncing}
-                startIcon={classroomSyncing ? <CircularProgress size={14} color="inherit" /> : <SyncIcon />}
+                startIcon={classroomSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
                 fullWidth
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  bgcolor: classroomConnected ? 'primary.main' : 'grey.300',
+                  '&:hover': {
+                    bgcolor: classroomConnected ? 'primary.dark' : 'grey.300',
+                  },
+                }}
               >
-                Sync
+                {classroomSyncing ? 'Syncing...' : 'Sync Materials'}
               </Button>
             </Box>
           </Box>
