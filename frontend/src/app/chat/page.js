@@ -322,19 +322,49 @@ export default function ChatPage() {
           ) : (
             <Box>
               {documents.map((doc, idx) => (
-                <Card key={idx} variant="outlined" sx={{ mb: 1 }}>
-                  <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Card
+                  key={idx}
+                  variant="outlined"
+                  sx={{
+                    mb: 1.5,
+                    borderRadius: 2,
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      transform: 'translateY(-2px)',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                     <Box display="flex" justifyContent="space-between" alignItems="start" gap={1}>
                       <Box flex={1} minWidth={0}>
-                        <Typography variant="body2" fontWeight="bold" noWrap>
+                        <Typography variant="body2" fontWeight="600" noWrap>
                           {doc.document_name}
                         </Typography>
-                        <Chip label={doc.course_name} size="small" sx={{ mt: 0.5 }} />
-                        <Typography variant="caption" display="block" color="text.secondary">
-                          {doc.chunk_count} sections
+                        <Chip
+                          label={doc.course_name}
+                          size="small"
+                          sx={{
+                            mt: 1,
+                            bgcolor: 'primary.light',
+                            color: 'primary.dark',
+                            fontWeight: 500,
+                          }}
+                        />
+                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                          📑 {doc.chunk_count} sections
                         </Typography>
                       </Box>
-                      <IconButton size="small" onClick={() => deleteDocument(doc.document_name, doc.course_name)}>
+                      <IconButton
+                        size="small"
+                        onClick={() => deleteDocument(doc.document_name, doc.course_name)}
+                        sx={{
+                          '&:hover': {
+                            bgcolor: 'error.light',
+                            color: 'error.main',
+                          },
+                        }}
+                      >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
