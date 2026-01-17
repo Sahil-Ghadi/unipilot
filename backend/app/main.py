@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
-from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph
+from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph, chat, classroom
 import socketio
 import time
 import traceback
@@ -19,7 +19,14 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://127.0.0.1:3000", "https://unipilottt.vercel.app"],
+    allow_origins=[
+        settings.frontend_url,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://unipilottt.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -81,6 +88,8 @@ app.include_router(calendar.router)
 app.include_router(notifications.router)
 app.include_router(syllabus.router)
 app.include_router(graph.router)
+app.include_router(chat.router)
+app.include_router(classroom.router)
 
 
 @app.get("/")

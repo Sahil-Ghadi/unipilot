@@ -102,6 +102,15 @@ export const calendarAPI = {
     syncAll: () => api.post('/api/calendar/sync-all'),
 };
 
+// Classroom endpoints
+export const classroomAPI = {
+    getAuthUrl: () => api.get('/api/classroom/auth-url'),
+    getStatus: () => api.get('/api/classroom/status'),
+    disconnect: () => api.post('/api/classroom/disconnect'),
+    getCourses: () => api.get('/api/classroom/courses'),
+    syncMaterials: (courseId) => api.post('/api/classroom/sync-materials', { course_id: courseId || null }),
+};
+
 // Project endpoints
 export const projectsAPI = {
     getProjects: () => api.get('/api/projects'),

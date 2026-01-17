@@ -29,6 +29,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import EventIcon from '@mui/icons-material/Event';
 import SyncIcon from '@mui/icons-material/Sync';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { useEffect } from 'react';
 import { notificationsAPI, calendarAPI, setAuthToken } from '@/lib/api';
 import { CircularProgress } from '@mui/material';
@@ -42,6 +43,7 @@ const menuItems = [
     { text: 'Schedule', icon: CalendarMonthIcon, path: '/schedule' },
     { text: 'Projects', icon: GroupIcon, path: '/projects' },
     { text: 'Upload', icon: UploadFileIcon, path: '/upload' },
+    { text: 'Chat', icon: SmartToyIcon, path: '/chat' },
 ];
 
 export default function Sidebar() {
