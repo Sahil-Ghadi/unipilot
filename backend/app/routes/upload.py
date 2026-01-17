@@ -3,11 +3,11 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.routes.auth import get_current_user
-from app.services.rag_service import RAGService
+from app.services.rag_service import get_rag_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-rag_service = RAGService()
+rag_service = get_rag_service()
 
 
 def _get_user_id(user: dict) -> str:

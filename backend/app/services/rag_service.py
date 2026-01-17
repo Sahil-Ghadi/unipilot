@@ -255,3 +255,12 @@ class RAGService:
             if len(results) >= top_k:
                 break
         return results
+
+
+_rag_service_instance = None
+
+def get_rag_service() -> RAGService:
+    global _rag_service_instance
+    if _rag_service_instance is None:
+        _rag_service_instance = RAGService()
+    return _rag_service_instance

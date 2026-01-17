@@ -22,6 +22,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import Layout from '@/components/Layout';
 import {
   Send as SendIcon,
   SmartToy as BotIcon,
@@ -98,13 +99,22 @@ export default function ChatPage() {
       const token = await getIdToken();
       if (!token) return;
 
+      console.log('🔄 Fetching documents...');
       const res = await fetch(`${API_BASE_URL}/chat/documents`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.error('Failed to fetch documents:', res.status, res.statusText);
+        return;
+      }
       const data = await res.json();
+      console.log('📄 Loaded documents:', data.documents);
       setDocuments(data.documents || []);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      toast.error('Failed to load documents list');
     } finally {
       setDocsLoading(false);
     }
@@ -319,6 +329,7 @@ export default function ChatPage() {
       setUploadProgress(100);
 
       const data = await res.json();
+      console.log('✅ Upload response:', data);
 
       if (!res.ok || !data.success) {
         throw new Error(data.detail || 'Upload failed');
@@ -370,7 +381,7 @@ export default function ChatPage() {
   }
 
   return (
-    <>
+    <Layout>
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -383,25 +394,21 @@ export default function ChatPage() {
         pauseOnHover
         theme="light"
       />
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box display="flex" gap={3}>
+      <Container maxWidth="xl" sx={{ py: 4, height: 'calc(100vh - 64px)' }}>
+        <Box display="flex" gap={3} height="100%">
           <Paper sx={{
             width: 320,
             p: 3,
-            height: 'calc(100vh - 100px)',
-            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
             borderRadius: 3,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+            bgcolor: 'white',
             backdropFilter: 'blur(10px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-            border: '1px solid rgba(255,255,255,0.2)'
+            border: '1px solid rgba(0,0,0,0.1)'
           }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h6" display="flex" alignItems="center" gap={1} fontWeight="700" sx={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>
+              <Typography variant="h6" display="flex" alignItems="center" gap={1} fontWeight="700" color="primary">
                 <DocIcon sx={{ color: '#667eea' }} />
                 Documents
               </Typography>
@@ -485,7 +492,7 @@ export default function ChatPage() {
                             size="small"
                             sx={{
                               mt: 1,
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              bgcolor: 'primary.main',
                               color: 'white',
                               fontWeight: 500,
                             }}
@@ -530,9 +537,9 @@ export default function ChatPage() {
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 600,
-                    background: classroomConnected ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    bgcolor: classroomConnected ? 'transparent' : 'primary.main',
                     '&:hover': {
-                      background: classroomConnected ? 'transparent' : 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                      bgcolor: classroomConnected ? 'transparent' : 'primary.dark',
                     }
                   }}
                 >
@@ -549,9 +556,9 @@ export default function ChatPage() {
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 600,
-                    background: classroomConnected ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'grey.300',
+                    bgcolor: classroomConnected ? 'primary.main' : 'grey.300',
                     '&:hover': {
-                      background: classroomConnected ? 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)' : 'grey.300',
+                      bgcolor: classroomConnected ? 'primary.dark' : 'grey.300',
                     },
                   }}
                 >
@@ -565,40 +572,26 @@ export default function ChatPage() {
             </Typography>
           </Paper>
 
-          <Box flex={1}>
+          <Box flex={1} height="100%">
             <Paper sx={{
-              height: 'calc(100vh - 100px)',
+              height: '100%',
               display: 'flex',
               flexDirection: 'column',
               borderRadius: 3,
               overflow: 'hidden',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+              bgcolor: 'white',
               backdropFilter: 'blur(10px)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)'
+              border: '1px solid rgba(0,0,0,0.1)'
             }}>
               <Box sx={{
                 p: 3,
                 borderBottom: 1,
                 borderColor: 'divider',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                bgcolor: 'primary.main',
                 boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
                 position: 'relative',
                 overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)',
-                  animation: 'shimmer 3s infinite',
-                },
-                '@keyframes shimmer': {
-                  '0%, 100%': { opacity: 0.5 },
-                  '50%': { opacity: 1 },
-                }
               }}>
                 <Typography variant="h5" color="white" display="flex" alignItems="center" gap={1} fontWeight="700" sx={{ position: 'relative', zIndex: 1 }}>
                   <BotIcon sx={{ fontSize: 32 }} />
@@ -613,7 +606,7 @@ export default function ChatPage() {
                 flex: 1,
                 overflow: 'auto',
                 p: 3,
-                background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
+                bgcolor: 'transparent',
               }}>
                 {messages.map((msg, idx) => (
                   <Box
@@ -643,9 +636,7 @@ export default function ChatPage() {
                         sx={{
                           p: 2.5,
                           borderRadius: 3,
-                          background: msg.role === 'user'
-                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                            : 'white',
+                          bgcolor: msg.role === 'user' ? 'primary.main' : 'grey.50',
                           color: msg.role === 'user' ? 'white' : 'text.primary',
                           border: msg.role === 'user' ? 'none' : '1px solid rgba(102, 126, 234, 0.1)',
                           boxShadow: msg.role === 'user'
@@ -713,13 +704,13 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
               </Box>
 
-              <Box sx={{ p: 2.5, borderTop: 1, borderColor: 'divider', bgcolor: 'rgba(248, 250, 252, 0.8)', backdropFilter: 'blur(10px)' }}>
+              <Box sx={{ p: 2.5, borderTop: 1, borderColor: 'divider', bgcolor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)' }}>
                 <Box display="flex" gap={1.5}>
                   <TextField
                     fullWidth
                     multiline
                     maxRows={3}
-                    placeholder="✨ Ask me anything about your course materials..."
+                    placeholder=" Ask me anything about your course materials..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -751,13 +742,13 @@ export default function ChatPage() {
                     disabled={!input.trim() || sending}
                     sx={{
                       alignSelf: 'flex-end',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      bgcolor: 'primary.main',
                       color: 'white',
                       borderRadius: 3,
                       px: 2,
                       transition: 'all 0.2s',
                       '&:hover': {
-                        background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                        bgcolor: 'primary.dark',
                         transform: 'scale(1.05)',
                       },
                       '&:disabled': {
@@ -867,6 +858,6 @@ export default function ChatPage() {
           </DialogActions>
         </Dialog>
       </Container>
-    </>
+    </Layout>
   );
 }
