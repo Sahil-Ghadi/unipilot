@@ -19,11 +19,11 @@ from app.models.chat import (
 )
 from app.routes.auth import get_current_user
 from app.services.chat_service import ChatService
-from app.services.rag_service import RAGService
+from app.services.rag_service import get_rag_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-rag_service = RAGService()
+rag_service = get_rag_service()
 chat_service = ChatService(api_key=settings.google_gemini_api_key, rag_service=rag_service)
 
 

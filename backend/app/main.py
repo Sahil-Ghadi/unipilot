@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
-from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph, chat, classroom
+from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph, chat, classroom, upload
 import socketio
 import time
 import traceback
@@ -90,6 +90,7 @@ app.include_router(syllabus.router)
 app.include_router(graph.router)
 app.include_router(chat.router)
 app.include_router(classroom.router)
+app.include_router(upload.router)
 
 
 @app.get("/")
@@ -113,13 +114,30 @@ socket_app = socketio.ASGIApp(
     other_asgi_app=app
 )
 
+# Apply CORS middleware to the top-level ASGI app to ensure it runs before Socket.IO
+# This fixes potential CORS issues where Socket.IO might interfere with OPTIONS requests
+app_with_cors = CORSMiddleware(
+    socket_app,
+    allow_origins=[
+        settings.frontend_url,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://unipilottt.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 if __name__ == "__main__":
     import uvicorn
     print("🚀 Starting UniPilot API with WebSocket support...")
     print("📡 Socket.IO endpoint: http://localhost:8000/socket.io/")
     print("📚 API docs: http://localhost:8000/docs")
     uvicorn.run(
-        socket_app,  # Run the combined app directly
+        app_with_cors,  # Run the CORS-wrapped app
         host=settings.host,
         port=settings.port,
         reload=False,  # Disable reload for now to test
