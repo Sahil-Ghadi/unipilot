@@ -17,6 +17,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  LinearProgress,
   Paper,
   TextField,
   Typography
@@ -29,16 +30,21 @@ import {
   Description as DocIcon,
   Delete as DeleteIcon,
   School as SchoolIcon,
-  Sync as SyncIcon
+  Sync as SyncIcon,
+  CloudUpload as CloudUploadIcon,
+  AttachFile as AttachFileIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { classroomAPI, setAuthToken } from '@/lib/api';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function ChatPage() {
   const router = useRouter();
   const { user, loading: authLoading, getIdToken } = useAuth();
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const API_BASE_URL = useMemo(() => {
     return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -62,10 +68,18 @@ export default function ChatPage() {
   const [classroomSyncing, setClassroomSyncing] = useState(false);
 
   const [indexDialogOpen, setIndexDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [courseName, setCourseName] = useState('');
   const [documentName, setDocumentName] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [indexing, setIndexing] = useState(false);
+
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadCourseName, setUploadCourseName] = useState('');
+  const [uploadDocumentName, setUploadDocumentName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -127,7 +141,7 @@ export default function ChatPage() {
       const resp = await classroomAPI.getAuthUrl();
       window.location.href = resp.data.auth_url;
     } catch (e) {
-      alert('Failed to connect Google Classroom');
+      toast.error('Failed to connect Google Classroom. Please try again.');
     }
   };
 
@@ -138,10 +152,10 @@ export default function ChatPage() {
       if (!token) return;
       setAuthToken(token);
       const resp = await classroomAPI.syncMaterials(null);
-      alert(resp.data.message || 'Sync complete');
+      toast.success(resp.data.message || 'Sync complete! Materials indexed successfully.');
       await loadDocuments();
     } catch (e) {
-      alert(e.response?.data?.detail || 'Failed to sync classroom materials');
+      toast.error(e.response?.data?.detail || 'Failed to sync classroom materials');
     } finally {
       setClassroomSyncing(false);
       await checkClassroomStatus();
@@ -200,6 +214,7 @@ export default function ChatPage() {
           timestamp: new Date().toISOString()
         }
       ]);
+      toast.error('Failed to get response from AI assistant');
     } finally {
       setSending(false);
     }
@@ -207,7 +222,7 @@ export default function ChatPage() {
 
   const indexPdf = async () => {
     if (!courseName.trim() || !pdfUrl.trim()) {
-      alert('Course name and PDF URL are required');
+      toast.warning('Course name and PDF URL are required');
       return;
     }
 
@@ -231,20 +246,95 @@ export default function ChatPage() {
 
       const data = await res.json();
       if (!data.success) {
-        alert(`Index failed: ${data.error || 'Unknown error'}`);
+        toast.error(`Index failed: ${data.error || 'Unknown error'}`);
         return;
       }
 
-      alert(`Indexed ${data.chunks_indexed} sections`);
+      toast.success(`✅ Indexed ${data.chunks_indexed} sections successfully!`);
       setIndexDialogOpen(false);
       setPdfUrl('');
       setCourseName('');
       setDocumentName('');
       await loadDocuments();
     } catch (e) {
-      alert('Index failed. Check backend logs.');
+      toast.error('Index failed. Check backend logs.');
     } finally {
       setIndexing(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Only PDF files are supported');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File size exceeds 50MB limit');
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadDocumentName(file.name);
+    setUploadDialogOpen(true);
+  };
+
+  const uploadFile = async () => {
+    if (!selectedFile || !uploadCourseName.trim()) {
+      toast.warning('Please select a file and enter a course name');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('course_name', uploadCourseName.trim());
+      if (uploadDocumentName.trim()) {
+        formData.append('document_name', uploadDocumentName.trim());
+      }
+
+      // Simulate progress (since we can't track actual upload progress easily)
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 10, 90));
+      }, 200);
+
+      const res = await fetch(`${API_BASE_URL}/chat/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.detail || 'Upload failed');
+      }
+
+      toast.success(`🎉 Successfully uploaded and indexed ${data.chunks_indexed} sections!`);
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setUploadCourseName('');
+      setUploadDocumentName('');
+      await loadDocuments();
+    } catch (e) {
+      toast.error(`Upload failed: ${e.message}`);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -264,9 +354,10 @@ export default function ChatPage() {
         body: JSON.stringify({ document_name: docName, course_name: courseNameToDelete })
       });
 
+      toast.success('Document deleted successfully');
       await loadDocuments();
     } catch (e) {
-      // ignore
+      toast.error('Failed to delete document');
     }
   };
 
@@ -279,352 +370,503 @@ export default function ChatPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box display="flex" gap={3}>
-        <Paper sx={{
-          width: 320,
-          p: 3,
-          height: 'calc(100vh - 100px)',
-          overflow: 'auto',
-          borderRadius: 3,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-        }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h6" display="flex" alignItems="center" gap={1} fontWeight="600">
-              <DocIcon color="primary" />
-              Documents
-            </Typography>
-            <IconButton
-              size="small"
-              color="primary"
-              onClick={() => setIndexDialogOpen(true)}
-              sx={{
-                bgcolor: 'primary.light',
-                '&:hover': {
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                },
-              }}
-            >
-              <UploadIcon />
-            </IconButton>
-          </Box>
-
-          {docsLoading ? (
-            <Box display="flex" justifyContent="center" py={2}>
-              <CircularProgress size={22} />
-            </Box>
-          ) : documents.length === 0 ? (
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              <Typography variant="body2" fontWeight="500">No documents yet</Typography>
-              <Typography variant="caption">Upload a PDF or sync Google Classroom to get started</Typography>
-            </Alert>
-          ) : (
-            <Box>
-              {documents.map((doc, idx) => (
-                <Card
-                  key={idx}
-                  variant="outlined"
-                  sx={{
-                    mb: 1.5,
-                    borderRadius: 2,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      transform: 'translateY(-2px)',
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="start" gap={1}>
-                      <Box flex={1} minWidth={0}>
-                        <Typography variant="body2" fontWeight="600" noWrap>
-                          {doc.document_name}
-                        </Typography>
-                        <Chip
-                          label={doc.course_name}
-                          size="small"
-                          sx={{
-                            mt: 1,
-                            bgcolor: 'primary.light',
-                            color: 'primary.dark',
-                            fontWeight: 500,
-                          }}
-                        />
-                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                          📑 {doc.chunk_count} sections
-                        </Typography>
-                      </Box>
-                      <IconButton
-                        size="small"
-                        onClick={() => deleteDocument(doc.document_name, doc.course_name)}
-                        sx={{
-                          '&:hover': {
-                            bgcolor: 'error.light',
-                            color: 'error.main',
-                          },
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          )}
-
-          <Divider sx={{ my: 3 }} />
-          <Box mb={2}>
-            <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1} fontWeight="600" mb={2}>
-              <SchoolIcon fontSize="small" color="primary" />
-              Google Classroom
-            </Typography>
-            <Box display="flex" flexDirection="column" gap={1}>
-              <Button
-                variant={classroomConnected ? 'outlined' : 'contained'}
-                size="medium"
-                onClick={connectClassroom}
-                disabled={classroomLoading}
-                fullWidth
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                }}
-              >
-                {classroomConnected ? '✓ Connected' : 'Connect'}
-              </Button>
-              <Button
-                variant="contained"
-                size="medium"
-                onClick={syncClassroomMaterials}
-                disabled={!classroomConnected || classroomSyncing}
-                startIcon={classroomSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-                fullWidth
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  bgcolor: classroomConnected ? 'primary.main' : 'grey.300',
-                  '&:hover': {
-                    bgcolor: classroomConnected ? 'primary.dark' : 'grey.300',
-                  },
-                }}
-              >
-                {classroomSyncing ? 'Syncing...' : 'Sync Materials'}
-              </Button>
-            </Box>
-          </Box>
-
-          <Typography variant="caption" color="text.secondary">
-            Backend: {API_BASE_URL}
-          </Typography>
-        </Paper>
-
-        <Box flex={1}>
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box display="flex" gap={3}>
           <Paper sx={{
+            width: 320,
+            p: 3,
             height: 'calc(100vh - 100px)',
-            display: 'flex',
-            flexDirection: 'column',
+            overflow: 'auto',
             borderRadius: 3,
-            overflow: 'hidden',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)'
           }}>
-            <Box sx={{
-              p: 3,
-              borderBottom: 1,
-              borderColor: 'divider',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
-              <Typography variant="h5" color="white" display="flex" alignItems="center" gap={1} fontWeight="600">
-                <BotIcon sx={{ fontSize: 32 }} />
-                AI Assistant
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6" display="flex" alignItems="center" gap={1} fontWeight="700" sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
+                <DocIcon sx={{ color: '#667eea' }} />
+                Documents
               </Typography>
-              <Typography variant="body2" color="white" sx={{ opacity: 0.95, mt: 0.5 }}>
-                Your intelligent study companion - Ask anything about your course materials
-              </Typography>
-            </Box>
-
-            <Box sx={{
-              flex: 1,
-              overflow: 'auto',
-              p: 3,
-              background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
-            }}>
-              {messages.map((msg, idx) => (
-                <Box
-                  key={idx}
-                  display="flex"
-                  gap={2}
-                  mb={3}
-                  flexDirection={msg.role === 'user' ? 'row-reverse' : 'row'}
-                >
-                  <Avatar sx={{ bgcolor: msg.role === 'user' ? 'primary.main' : 'secondary.main' }}>
-                    {msg.role === 'user' ? <PersonIcon /> : <BotIcon />}
-                  </Avatar>
-
-                  <Box flex={1}>
-                    <Paper
-                      elevation={msg.role === 'user' ? 2 : 1}
-                      sx={{
-                        p: 2.5,
-                        borderRadius: 3,
-                        bgcolor: msg.role === 'user' ? 'primary.main' : 'white',
-                        color: msg.role === 'user' ? 'white' : 'text.primary',
-                        border: msg.role === 'user' ? 'none' : '1px solid',
-                        borderColor: 'grey.200',
-                        boxShadow: msg.role === 'user'
-                          ? '0 4px 12px rgba(102, 126, 234, 0.25)'
-                          : '0 2px 8px rgba(0,0,0,0.05)'
-                      }}
-                    >
-                      <Typography variant="body1" whiteSpace="pre-wrap" sx={{ lineHeight: 1.7 }}>
-                        {msg.content}
-                      </Typography>
-
-                      {msg.sources && msg.sources.length > 0 && (
-                        <Box mt={2}>
-                          <Typography variant="caption" display="block" mb={1} fontWeight="bold">
-                            Sources
-                          </Typography>
-                          {msg.sources.map((s, sidx) => (
-                            <Chip
-                              key={sidx}
-                              label={`${s.document_name} (${s.course_name}) #${s.chunk_index}`}
-                              size="small"
-                              sx={{ mr: 0.5, mb: 0.5 }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-
-                      {msg.mode && (
-                        <Typography variant="caption" display="block" mt={1} sx={{ opacity: 0.75 }}>
-                          Mode: {msg.mode}
-                        </Typography>
-                      )}
-                    </Paper>
-                  </Box>
-                </Box>
-              ))}
-
-              {sending && (
-                <Box display="flex" gap={2} mb={3}>
-                  <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                    <BotIcon />
-                  </Avatar>
-                  <Paper sx={{
-                    p: 2.5,
-                    bgcolor: 'white',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                  }}>
-                    <CircularProgress size={18} sx={{ color: 'primary.main' }} />
-                    <Typography variant="body2" sx={{ ml: 1.5 }} component="span" color="text.secondary">
-                      AI is thinking...
-                    </Typography>
-                  </Paper>
-                </Box>
-              )}
-
-              <div ref={messagesEndRef} />
-            </Box>
-
-            <Box sx={{ p: 2.5, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
-              <Box display="flex" gap={1.5}>
-                <TextField
-                  fullWidth
-                  multiline
-                  maxRows={3}
-                  placeholder="✨ Ask me anything about your course materials..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  disabled={sending}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      bgcolor: 'white',
-                      '&:hover': {
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'primary.main',
-                        },
-                      },
-                    },
-                  }}
-                />
+              <Box display="flex" gap={0.5}>
                 <IconButton
-                  color="primary"
-                  onClick={sendMessage}
-                  disabled={!input.trim() || sending}
+                  size="small"
+                  onClick={() => fileInputRef.current?.click()}
                   sx={{
-                    alignSelf: 'flex-end',
                     bgcolor: 'primary.main',
                     color: 'white',
-                    borderRadius: 3,
-                    px: 2,
                     '&:hover': {
                       bgcolor: 'primary.dark',
+                      transform: 'scale(1.05)',
                     },
-                    '&:disabled': {
-                      bgcolor: 'grey.300',
-                      color: 'grey.500',
-                    },
+                    transition: 'all 0.2s'
                   }}
                 >
-                  <SendIcon />
+                  <CloudUploadIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => setIndexDialogOpen(true)}
+                  sx={{
+                    bgcolor: 'secondary.main',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'secondary.dark',
+                      transform: 'scale(1.05)',
+                    },
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <AttachFileIcon fontSize="small" />
                 </IconButton>
               </Box>
             </Box>
-          </Paper>
-        </Box>
-      </Box>
 
-      <Dialog open={indexDialogOpen} onClose={() => setIndexDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h6" fontWeight="600">📄 Add Document</Typography>
-          <Typography variant="caption" color="text.secondary">Index a PDF from URL to make it searchable</Typography>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Course Name"
-            value={courseName}
-            onChange={(e) => setCourseName(e.target.value)}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Document Name (optional)"
-            value={documentName}
-            onChange={(e) => setDocumentName(e.target.value)}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="PDF URL"
-            value={pdfUrl}
-            onChange={(e) => setPdfUrl(e.target.value)}
-            margin="normal"
-            placeholder="https://.../file.pdf"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIndexDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={indexPdf} disabled={indexing || !courseName.trim() || !pdfUrl.trim()}>
-            {indexing ? 'Indexing...' : 'Index'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
+
+            {docsLoading ? (
+              <Box display="flex" justifyContent="center" py={2}>
+                <CircularProgress size={22} />
+              </Box>
+            ) : documents.length === 0 ? (
+              <Alert severity="info" sx={{ borderRadius: 2, bgcolor: 'rgba(102, 126, 234, 0.05)' }}>
+                <Typography variant="body2" fontWeight="500">No documents yet</Typography>
+                <Typography variant="caption">Upload a PDF or sync Google Classroom to get started</Typography>
+              </Alert>
+            ) : (
+              <Box>
+                {documents.map((doc, idx) => (
+                  <Card
+                    key={idx}
+                    variant="outlined"
+                    sx={{
+                      mb: 1.5,
+                      borderRadius: 2,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      border: '1px solid rgba(102, 126, 234, 0.1)',
+                      '&:hover': {
+                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.15)',
+                        transform: 'translateY(-4px)',
+                        borderColor: 'primary.main',
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="start" gap={1}>
+                        <Box flex={1} minWidth={0}>
+                          <Typography variant="body2" fontWeight="600" noWrap>
+                            {doc.document_name}
+                          </Typography>
+                          <Chip
+                            label={doc.course_name}
+                            size="small"
+                            sx={{
+                              mt: 1,
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              color: 'white',
+                              fontWeight: 500,
+                            }}
+                          />
+                          <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                            📑 {doc.chunk_count} sections
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          onClick={() => deleteDocument(doc.document_name, doc.course_name)}
+                          sx={{
+                            '&:hover': {
+                              bgcolor: 'error.light',
+                              color: 'error.main',
+                            },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
+
+            <Divider sx={{ my: 3 }} />
+            <Box mb={2}>
+              <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1} fontWeight="600" mb={2}>
+                <SchoolIcon fontSize="small" sx={{ color: '#667eea' }} />
+                Google Classroom
+              </Typography>
+              <Box display="flex" flexDirection="column" gap={1}>
+                <Button
+                  variant={classroomConnected ? 'outlined' : 'contained'}
+                  size="medium"
+                  onClick={connectClassroom}
+                  disabled={classroomLoading}
+                  fullWidth
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    background: classroomConnected ? 'transparent' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: classroomConnected ? 'transparent' : 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                    }
+                  }}
+                >
+                  {classroomConnected ? '✓ Connected' : 'Connect'}
+                </Button>
+                <Button
+                  variant="contained"
+                  size="medium"
+                  onClick={syncClassroomMaterials}
+                  disabled={!classroomConnected || classroomSyncing}
+                  startIcon={classroomSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                  fullWidth
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    background: classroomConnected ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'grey.300',
+                    '&:hover': {
+                      background: classroomConnected ? 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)' : 'grey.300',
+                    },
+                  }}
+                >
+                  {classroomSyncing ? 'Syncing...' : 'Sync Materials'}
+                </Button>
+              </Box>
+            </Box>
+
+            <Typography variant="caption" color="text.secondary">
+              Backend: {API_BASE_URL}
+            </Typography>
+          </Paper>
+
+          <Box flex={1}>
+            <Paper sx={{
+              height: 'calc(100vh - 100px)',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 3,
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              <Box sx={{
+                p: 3,
+                borderBottom: 1,
+                borderColor: 'divider',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 20px rgba(102, 126, 234, 0.3)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)',
+                  animation: 'shimmer 3s infinite',
+                },
+                '@keyframes shimmer': {
+                  '0%, 100%': { opacity: 0.5 },
+                  '50%': { opacity: 1 },
+                }
+              }}>
+                <Typography variant="h5" color="white" display="flex" alignItems="center" gap={1} fontWeight="700" sx={{ position: 'relative', zIndex: 1 }}>
+                  <BotIcon sx={{ fontSize: 32 }} />
+                  AI Assistant
+                </Typography>
+                <Typography variant="body2" color="white" sx={{ opacity: 0.95, mt: 0.5, position: 'relative', zIndex: 1 }}>
+                  Your intelligent study companion - Ask anything about your course materials
+                </Typography>
+              </Box>
+
+              <Box sx={{
+                flex: 1,
+                overflow: 'auto',
+                p: 3,
+                background: 'linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%)',
+              }}>
+                {messages.map((msg, idx) => (
+                  <Box
+                    key={idx}
+                    display="flex"
+                    gap={2}
+                    mb={3}
+                    flexDirection={msg.role === 'user' ? 'row-reverse' : 'row'}
+                    sx={{
+                      animation: 'fadeIn 0.3s ease-in',
+                      '@keyframes fadeIn': {
+                        from: { opacity: 0, transform: 'translateY(10px)' },
+                        to: { opacity: 1, transform: 'translateY(0)' },
+                      }
+                    }}
+                  >
+                    <Avatar sx={{
+                      bgcolor: msg.role === 'user' ? 'primary.main' : 'secondary.main',
+                      boxShadow: msg.role === 'user' ? '0 4px 12px rgba(102, 126, 234, 0.3)' : '0 4px 12px rgba(118, 75, 162, 0.3)'
+                    }}>
+                      {msg.role === 'user' ? <PersonIcon /> : <BotIcon />}
+                    </Avatar>
+
+                    <Box flex={1}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2.5,
+                          borderRadius: 3,
+                          background: msg.role === 'user'
+                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                            : 'white',
+                          color: msg.role === 'user' ? 'white' : 'text.primary',
+                          border: msg.role === 'user' ? 'none' : '1px solid rgba(102, 126, 234, 0.1)',
+                          boxShadow: msg.role === 'user'
+                            ? '0 8px 24px rgba(102, 126, 234, 0.25)'
+                            : '0 4px 16px rgba(0,0,0,0.05)',
+                          transition: 'all 0.2s',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: msg.role === 'user'
+                              ? '0 12px 32px rgba(102, 126, 234, 0.3)'
+                              : '0 8px 24px rgba(0,0,0,0.08)'
+                          }
+                        }}
+                      >
+                        <Typography variant="body1" whiteSpace="pre-wrap" sx={{ lineHeight: 1.7 }}>
+                          {msg.content}
+                        </Typography>
+
+                        {msg.sources && msg.sources.length > 0 && (
+                          <Box mt={2}>
+                            <Typography variant="caption" display="block" mb={1} fontWeight="bold">
+                              Sources
+                            </Typography>
+                            {msg.sources.map((s, sidx) => (
+                              <Chip
+                                key={sidx}
+                                label={`${s.document_name} (${s.course_name}) #${s.chunk_index}`}
+                                size="small"
+                                sx={{ mr: 0.5, mb: 0.5 }}
+                              />
+                            ))}
+                          </Box>
+                        )}
+
+                        {msg.mode && (
+                          <Typography variant="caption" display="block" mt={1} sx={{ opacity: 0.75 }}>
+                            Mode: {msg.mode}
+                          </Typography>
+                        )}
+                      </Paper>
+                    </Box>
+                  </Box>
+                ))}
+
+                {sending && (
+                  <Box display="flex" gap={2} mb={3}>
+                    <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                      <BotIcon />
+                    </Avatar>
+                    <Paper sx={{
+                      p: 2.5,
+                      bgcolor: 'white',
+                      borderRadius: 3,
+                      border: '1px solid rgba(102, 126, 234, 0.1)',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.05)'
+                    }}>
+                      <CircularProgress size={18} sx={{ color: 'primary.main' }} />
+                      <Typography variant="body2" sx={{ ml: 1.5 }} component="span" color="text.secondary">
+                        AI is thinking...
+                      </Typography>
+                    </Paper>
+                  </Box>
+                )}
+
+                <div ref={messagesEndRef} />
+              </Box>
+
+              <Box sx={{ p: 2.5, borderTop: 1, borderColor: 'divider', bgcolor: 'rgba(248, 250, 252, 0.8)', backdropFilter: 'blur(10px)' }}>
+                <Box display="flex" gap={1.5}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    maxRows={3}
+                    placeholder="✨ Ask me anything about your course materials..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    disabled={sending}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        bgcolor: 'white',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'primary.main',
+                          },
+                        },
+                        '&.Mui-focused': {
+                          boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
+                        }
+                      },
+                    }}
+                  />
+                  <IconButton
+                    color="primary"
+                    onClick={sendMessage}
+                    disabled={!input.trim() || sending}
+                    sx={{
+                      alignSelf: 'flex-end',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      borderRadius: 3,
+                      px: 2,
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                        transform: 'scale(1.05)',
+                      },
+                      '&:disabled': {
+                        bgcolor: 'grey.300',
+                        color: 'grey.500',
+                      },
+                    }}
+                  >
+                    <SendIcon />
+                  </IconButton>
+                </Box>
+              </Box>
+            </Paper>
+          </Box>
+        </Box>
+
+        {/* URL Index Dialog */}
+        <Dialog open={indexDialogOpen} onClose={() => setIndexDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+          <DialogTitle sx={{ pb: 1 }}>
+            <Box>
+              <Box component="span" sx={{ fontSize: '1.25rem', fontWeight: 600, display: 'block' }}>📄 Add Document from URL</Box>
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'text.secondary', display: 'block', mt: 0.5 }}>Index a PDF from URL to make it searchable</Box>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="Course Name"
+              value={courseName}
+              onChange={(e) => setCourseName(e.target.value)}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="Document Name (optional)"
+              value={documentName}
+              onChange={(e) => setDocumentName(e.target.value)}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="PDF URL"
+              value={pdfUrl}
+              onChange={(e) => setPdfUrl(e.target.value)}
+              margin="normal"
+              placeholder="https://.../file.pdf"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setIndexDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={indexPdf} disabled={indexing || !courseName.trim() || !pdfUrl.trim()}>
+              {indexing ? 'Indexing...' : 'Index'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* File Upload Dialog */}
+        <Dialog open={uploadDialogOpen} onClose={() => !uploading && setUploadDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+          <DialogTitle sx={{ pb: 1 }}>
+            <Box>
+              <Box component="span" sx={{ fontSize: '1.25rem', fontWeight: 600, display: 'block' }}>📤 Upload PDF Document</Box>
+              <Box component="span" sx={{ fontSize: '0.75rem', color: 'text.secondary', display: 'block', mt: 0.5 }}>Upload a PDF file from your device</Box>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {selectedFile && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                <Typography variant="body2" fontWeight="500">Selected: {selectedFile.name}</Typography>
+                <Typography variant="caption">Size: {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</Typography>
+              </Alert>
+            )}
+            <TextField
+              fullWidth
+              label="Course Name"
+              value={uploadCourseName}
+              onChange={(e) => setUploadCourseName(e.target.value)}
+              margin="normal"
+              required
+            />
+            <TextField
+              fullWidth
+              label="Document Name (optional)"
+              value={uploadDocumentName}
+              onChange={(e) => setUploadDocumentName(e.target.value)}
+              margin="normal"
+              helperText="Defaults to filename if not provided"
+            />
+            {uploading && (
+              <Box mt={2}>
+                <Typography variant="caption" color="text.secondary" gutterBottom>
+                  Uploading and indexing... {uploadProgress}%
+                </Typography>
+                <LinearProgress variant="determinate" value={uploadProgress} sx={{ borderRadius: 1 }} />
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setUploadDialogOpen(false)} disabled={uploading}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={uploadFile}
+              disabled={uploading || !uploadCourseName.trim() || !selectedFile}
+              startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+            >
+              {uploading ? 'Uploading...' : 'Upload & Index'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </>
   );
 }

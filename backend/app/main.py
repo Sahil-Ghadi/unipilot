@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import settings
-from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph, chat, classroom
+from app.routes import auth, tasks, syllabus, schedule, calendar, projects, notifications, graph, chat, classroom, upload
 import socketio
 import time
 import traceback
@@ -90,6 +90,7 @@ app.include_router(syllabus.router)
 app.include_router(graph.router)
 app.include_router(chat.router)
 app.include_router(classroom.router)
+app.include_router(upload.router)
 
 
 @app.get("/")
