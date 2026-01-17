@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
@@ -17,6 +18,9 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  List,
+  ListItem,
+  ListItemText,
   Paper,
   TextField,
   Typography
@@ -66,6 +70,11 @@ export default function ChatPage() {
   const [documentName, setDocumentName] = useState('');
   const [pdfUrl, setPdfUrl] = useState('');
   const [indexing, setIndexing] = useState(false);
+
+  const [materialsDialogOpen, setMaterialsDialogOpen] = useState(false);
+  const [availableMaterials, setAvailableMaterials] = useState([]);
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -131,20 +140,65 @@ export default function ChatPage() {
     }
   };
 
-  const syncClassroomMaterials = async () => {
+  const openMaterialsDialog = async () => {
+    try {
+      setLoadingMaterials(true);
+      setMaterialsDialogOpen(true);
+      const token = await getIdToken();
+      if (!token) return;
+      setAuthToken(token);
+      const resp = await classroomAPI.listMaterials();
+      setAvailableMaterials(resp.data.materials || []);
+      setSelectedMaterials([]);
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Failed to fetch classroom materials');
+      setMaterialsDialogOpen(false);
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
+  const syncSelectedMaterials = async () => {
+    if (selectedMaterials.length === 0) {
+      alert('Please select at least one document to sync');
+      return;
+    }
+
     try {
       setClassroomSyncing(true);
       const token = await getIdToken();
       if (!token) return;
       setAuthToken(token);
-      const resp = await classroomAPI.syncMaterials(null);
+
+      const materialsToSync = availableMaterials.filter((m, idx) => selectedMaterials.includes(idx));
+      const resp = await classroomAPI.syncMaterials(materialsToSync);
       alert(resp.data.message || 'Sync complete');
       await loadDocuments();
+      setMaterialsDialogOpen(false);
+      setSelectedMaterials([]);
     } catch (e) {
       alert(e.response?.data?.detail || 'Failed to sync classroom materials');
     } finally {
       setClassroomSyncing(false);
       await checkClassroomStatus();
+    }
+  };
+
+  const toggleMaterialSelection = (idx) => {
+    setSelectedMaterials(prev => {
+      if (prev.includes(idx)) {
+        return prev.filter(i => i !== idx);
+      } else {
+        return [...prev, idx];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMaterials.length === availableMaterials.length) {
+      setSelectedMaterials([]);
+    } else {
+      setSelectedMaterials(availableMaterials.map((_, idx) => idx));
     }
   };
 
@@ -398,7 +452,7 @@ export default function ChatPage() {
               <Button
                 variant="contained"
                 size="medium"
-                onClick={syncClassroomMaterials}
+                onClick={openMaterialsDialog}
                 disabled={!classroomConnected || classroomSyncing}
                 startIcon={classroomSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
                 fullWidth
@@ -622,6 +676,100 @@ export default function ChatPage() {
           <Button onClick={() => setIndexDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={indexPdf} disabled={indexing || !courseName.trim() || !pdfUrl.trim()}>
             {indexing ? 'Indexing...' : 'Index'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={materialsDialogOpen}
+        onClose={() => setMaterialsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" fontWeight="600" component="div">📚 Select Materials to Sync</Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            Choose documents from your Google Classroom to sync
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {loadingMaterials ? (
+            <Box display="flex" justifyContent="center" alignItems="center" py={4}>
+              <CircularProgress />
+              <Typography variant="body2" sx={{ ml: 2 }}>Loading materials...</Typography>
+            </Box>
+          ) : availableMaterials.length === 0 ? (
+            <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
+              No PDF materials found in your Google Classroom courses.
+            </Alert>
+          ) : (
+            <>
+              <Box display="flex" justifyContent="space-between" alignItems="center" my={2}>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedMaterials.length} of {availableMaterials.length} selected
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={toggleSelectAll}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {selectedMaterials.length === availableMaterials.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </Box>
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {availableMaterials.map((material, idx) => (
+                  <ListItem
+                    key={idx}
+                    dense
+                    button
+                    onClick={() => toggleMaterialSelection(idx)}
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      border: '1px solid',
+                      borderColor: selectedMaterials.includes(idx) ? 'primary.main' : 'grey.300',
+                      bgcolor: selectedMaterials.includes(idx) ? 'primary.light' : 'transparent',
+                      '&:hover': {
+                        bgcolor: selectedMaterials.includes(idx) ? 'primary.light' : 'grey.50',
+                      },
+                    }}
+                  >
+                    <Checkbox
+                      edge="start"
+                      checked={selectedMaterials.includes(idx)}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                    <ListItemText
+                      primary={
+                        <Typography variant="body2" fontWeight="500">
+                          {material.document_name}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="text.secondary">
+                          📖 {material.course_name}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setMaterialsDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={syncSelectedMaterials}
+            disabled={classroomSyncing || selectedMaterials.length === 0}
+            startIcon={classroomSyncing ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {classroomSyncing ? 'Syncing...' : `Sync ${selectedMaterials.length} Document${selectedMaterials.length !== 1 ? 's' : ''}`}
           </Button>
         </DialogActions>
       </Dialog>
