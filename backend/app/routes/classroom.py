@@ -92,7 +92,7 @@ async def list_courses(current_user: dict = Depends(get_current_user)):
 
 @router.get("/list-materials")
 async def list_materials(current_user: dict = Depends(get_current_user)):
-    """List all available PDF materials from Google Classroom courses"""
+    """List all available PDF and Word materials from Google Classroom courses"""
     tokens = firebase_service.get_google_classroom_tokens(current_user['id'])
     if not tokens:
         raise HTTPException(status_code=400, detail="Google Classroom not connected")
@@ -125,7 +125,7 @@ async def list_materials(current_user: dict = Depends(get_current_user)):
 
                     try:
                         meta = classroom_service.get_drive_file_metadata(drive_svc, file_id)
-                        if classroom_service.is_pdf_file(meta.get('name'), meta.get('mimeType')):
+                        if classroom_service.is_supported_file(meta.get('name'), meta.get('mimeType')):
                             all_materials.append({
                                 "file_id": file_id,
                                 "course_id": cid,
@@ -172,16 +172,18 @@ async def sync_materials(payload: dict, current_user: dict = Depends(get_current
 
             try:
                 meta = classroom_service.get_drive_file_metadata(drive_svc, file_id)
-                if not classroom_service.is_pdf_file(meta.get('name'), meta.get('mimeType')):
+                if not classroom_service.is_supported_file(meta.get('name'), meta.get('mimeType')):
                     skipped += 1
                     continue
 
-                pdf_bytes = classroom_service.download_drive_file(drive_svc, file_id)
-                result = await rag_service.index_pdf_bytes(
-                    pdf_bytes=pdf_bytes,
+                file_bytes = classroom_service.download_drive_file(drive_svc, file_id)
+                file_name = meta.get('name') or 'document.pdf'
+                result = await rag_service.index_file_bytes(
+                    file_bytes=file_bytes,
+                    file_name=file_name,
                     user_id=current_user['id'],
                     course_name=str(course_name),
-                    document_name=str(document_name or meta.get('name')),
+                    document_name=str(document_name or file_name),
                 )
                 if result.get('success'):
                     indexed += 1
@@ -191,7 +193,7 @@ async def sync_materials(payload: dict, current_user: dict = Depends(get_current
                 errors.append(f"{document_name}: {classroom_service.safe_google_error(e)}")
 
         return {
-            "message": f"Indexed {indexed} PDFs. Skipped {skipped} non-PDF files.",
+            "message": f"Indexed {indexed} documents. Skipped {skipped} unsupported files.",
             "indexed": indexed,
             "skipped": skipped,
             "errors": errors if errors else None,
